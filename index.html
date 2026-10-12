@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Blockslab — Roblox, do seu jeito</title>
+<meta name="description" content="Blockslab: launcher comunitário e de código aberto para Roblox no Windows, com perfis de gráficos, mods, Discord Rich Presence e backup das configurações.">
+<meta name="theme-color" content="#f7f5f0">
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></symbol>
+<symbol id="i-rocket" viewBox="0 0 24 24"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></symbol>
+<symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></symbol>
+<symbol id="i-gamepad" viewBox="0 0 24 24"><line x1="6" x2="10" y1="11" y2="11"/><line x1="8" x2="8" y1="9" y2="13"/><line x1="15" x2="15.01" y1="12" y2="12"/><line x1="18" x2="18.01" y1="10" y2="10"/><path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z"/></symbol>
+<symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></symbol>
+<symbol id="i-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></symbol>
+<symbol id="i-github" viewBox="0 0 24 24"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></symbol>
+<symbol id="i-code" viewBox="0 0 24 24"><path d="m18 16 4-4-4-4"/><path d="m6 8-4 4 4 4"/><path d="m14.5 4-5 16"/></symbol>
+<symbol id="i-monitor" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></symbol>
+<symbol id="i-package" viewBox="0 0 24 24"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+</svg>
+<a class="skip" href="#conteudo">Pular para o conteúdo</a>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#topo"><img src="assets/logo.png" alt="" width="40" height="40"><span>blockslab</span></a>
+    <nav aria-label="Principal">
+      <a class="nl" href="#recursos">Recursos</a>
+      <a class="nl" href="#sobre">Sobre o projeto</a>
+      <a class="nl" href="#criador">Criador</a>
+      <a class="nl" href="#perguntas">Perguntas</a>
+      <a class="btn small primary" href="#downloads">Downloads</a>
+    </nav>
+  </div>
+</header>
+
+<main id="conteudo">
+  <section class="hero wrap" id="topo">
+    <div class="hero-text">
+      <p class="eyebrow">Launcher comunitário para Windows</p>
+      <h1>Roblox, do <em>seu jeito.</em></h1>
+      <p class="lead">O Blockslab é um launcher alternativo de código aberto para quem quer personalizar e configurar a própria experiência.</p>
+      <div class="actions">
+        <a class="btn primary" id="download" href="https://github.com/PCgamerbom/Blockslab/archive/refs/heads/main.zip" rel="noopener"><svg class="bi" aria-hidden="true"><use href="#i-download"/></svg><span id="download-label">Baixar código-fonte (.ZIP)</span></a>
+        <a class="btn ghost" href="#recursos"><span>Conhecer recursos</span><svg class="bi" aria-hidden="true"><use href="#i-chevron"/></svg></a>
+      </div>
+      <p class="transp" id="transp"><svg class="ti" aria-hidden="true"><use href="#i-shield"/></svg><span><strong>Transparência:</strong> este arquivo é o código-fonte, não um instalador. Ainda não há .exe publicado.</span></p>
+    </div>
+
+    <div class="hero-art" aria-hidden="true">
+      <div class="glow"></div>
+      <div class="orbit"><i class="dot d1"></i><i class="dot d2"></i></div>
+      <img class="tile" src="assets/logo.png" alt="" width="320" height="320">
+      <span class="chip c1"><i></i>Personalize</span>
+      <span class="chip c2"><i></i>Feito pela comunidade</span>
+    </div>
+    <p class="ver" id="versao">B / 2.11.4</p>
+  </section>
+
+  <div class="strip">
+    <ul class="wrap strip-in">
+      <li><svg class="ico" aria-hidden="true"><use href="#i-monitor"/></svg><span>Windows 10 e 11</span></li>
+      <li><svg class="ico" aria-hidden="true"><use href="#i-code"/></svg><span>Projeto de código aberto</span></li>
+      <li><svg class="ico" aria-hidden="true"><use href="#i-package"/></svg><span>Código-fonte em ZIP</span></li>
+      <li><svg class="ico" aria-hidden="true"><use href="#i-users"/></svg><span>Launcher comunitário</span></li>
+    </ul>
+  </div>
+
+  <section id="recursos" class="sec">
+    <div class="wrap">
+      <p class="eyebrow">Recursos</p>
+      <h2>Tudo do Bloxstrap, mais ferramentas do Blockslab.</h2>
+      <div class="grid">
+        <article class="card"><span class="ib"><svg class="ico" aria-hidden="true"><use href="#i-rocket"/></svg></span><h3>Perfis de gráficos</h3><p>Desempenho, Equilibrado ou Qualidade com um clique.</p></article>
+        <article class="card"><span class="ib"><svg class="ico" aria-hidden="true"><use href="#i-save"/></svg></span><h3>Perfis e backup</h3><p>Salve seus FastFlags com nome e faça backup das configurações.</p></article>
+        <article class="card"><span class="ib"><svg class="ico" aria-hidden="true"><use href="#i-trash"/></svg></span><h3>Limpeza de cache</h3><p>Libere espaço removendo temporários do Roblox pelo app.</p></article>
+        <article class="card"><span class="ib"><svg class="ico" aria-hidden="true"><use href="#i-gamepad"/></svg></span><h3>Discord Rich Presence</h3><p>Mostre aos amigos o que você está jogando.</p></article>
+        <article class="card"><span class="ib"><svg class="ico" aria-hidden="true"><use href="#i-wrench"/></svg></span><h3>Mods de arquivos</h3><p>Troque som de morte, cursor, fontes e ícones.</p></article>
+        <article class="card"><span class="ib"><svg class="ico" aria-hidden="true"><use href="#i-globe"/></svg></span><h3>Em português</h3><p>Interface em português do Brasil e telemetria desligada por padrão.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="sobre" class="sec alt">
+    <div class="wrap two">
+      <div>
+        <p class="eyebrow">Sobre o projeto</p>
+        <h2>Aberto, simples e feito para ser auditado.</h2>
+        <p>O Blockslab é um fork do <a href="https://github.com/bloxstraplabs/bloxstrap" rel="noopener">Bloxstrap</a>, criado por pizzaboxer e colaboradores, distribuído sob a licença MIT. Todo o código está no GitHub para quem quiser ler, compilar e contribuir.</p>
+        <p>Não é afiliado à Roblox Corporation nem ao projeto Bloxstrap original.</p>
+        <a class="btn ghost" href="https://github.com/PCgamerbom/Blockslab" rel="noopener"><svg class="bi" aria-hidden="true"><use href="#i-github"/></svg><span>Ver no GitHub</span></a>
+      </div>
+      <ol class="steps">
+        <li>Instale o <a href="https://aka.ms/dotnet-core-applaunch?missing_runtime=true&amp;arch=x64&amp;rid=win11-x64&amp;apphost_version=6.0.36&amp;gui=true" rel="noopener">.NET 6 Desktop Runtime</a>.</li>
+        <li>Baixe o <code>Blockslab.exe</code> quando houver uma release publicada.</li>
+        <li>Execute e clique em <strong>Instalar</strong>. Se o SmartScreen avisar, use “Mais informações” e “Executar assim mesmo”.</li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="criador" class="sec">
+    <div class="wrap">
+      <p class="eyebrow">Criador</p>
+      <h2>Quem faz o Blockslab.</h2>
+      <article class="creator" id="criador-card" aria-label="Perfil do criador no Roblox">
+        <div class="avatar-box">
+          <img id="cr-avatar" src="assets/logo.png" alt="Avatar de PCgamerbom no Roblox" width="260" height="260" referrerpolicy="no-referrer">
+        </div>
+        <div class="cr-info">
+          <p class="cr-role">Criador do Blockslab</p>
+          <h3 id="cr-display">PCgamerbom</h3>
+          <p class="cr-user" id="cr-user">@PCgamerbom</p>
+          <p class="cr-status" id="cr-status" aria-live="polite"><i class="sdot off" id="cr-dot"></i><span id="cr-status-text">Carregando status…</span></p>
+          <p class="cr-last" id="cr-last"></p>
+          <a class="btn ghost" href="https://www.roblox.com/users/2281180949/profile" rel="noopener"><svg class="bi" aria-hidden="true"><use href="#i-external"/></svg><span>Ver perfil no Roblox</span></a>
+          <p class="cr-note">Dados do Roblox atualizados a cada 30 segundos, carregados via RoProxy.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="perguntas" class="sec">
+    <div class="wrap narrow">
+      <p class="eyebrow">Perguntas</p>
+      <h2>Perguntas frequentes</h2>
+      <details><summary>É seguro?</summary><p>O código-fonte é público e pode ser auditado no GitHub. Baixe somente pelo repositório oficial ou por este site.</p></details>
+      <details><summary>Posso ser banido por usar?</summary><p>O Blockslab não injeta código no cliente do Roblox, mas nenhum software de terceiros tem garantia total. Use por sua conta e risco.</p></details>
+      <details><summary>Qual a relação com o Bloxstrap?</summary><p>O Blockslab é um fork do Bloxstrap (licença MIT). Os créditos do autor original foram mantidos.</p></details>
+      <details><summary>Como relatar um problema?</summary><p>Abra uma <a href="https://github.com/PCgamerbom/Blockslab/issues" rel="noopener">issue no GitHub</a>.</p></details>
+    </div>
+  </section>
+
+  <section id="downloads" class="sec cta">
+    <div class="wrap cta-in">
+      <div>
+        <h2>Pronto para começar?</h2>
+        <p>Veja todas as versões publicadas ou baixe o código-fonte.</p>
+      </div>
+      <div class="actions">
+        <a class="btn primary" href="https://github.com/PCgamerbom/Blockslab/releases" rel="noopener"><svg class="bi" aria-hidden="true"><use href="#i-download"/></svg><span>Ver releases</span></a>
+        <a class="btn ghost" href="https://github.com/PCgamerbom/Blockslab" rel="noopener"><svg class="bi" aria-hidden="true"><use href="#i-github"/></svg><span>GitHub</span></a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">Blockslab · MIT · Baseado no <a href="https://github.com/bloxstraplabs/bloxstrap" rel="noopener">Bloxstrap</a> © pizzaboxer · Não afiliado à Roblox Corporation.</div>
+</footer>
+
+<script src="script.js"></script>
+</body>
+</html>
