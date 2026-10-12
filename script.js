@@ -4,30 +4,35 @@
   var OWNER = "PCgamerbom";
   var REPO = "Blockslab";
 
-  var botao = document.getElementById("download");
-  var rotulo = document.getElementById("download-label");
-  var transp = document.getElementById("transp");
+  var botoes = [document.getElementById("download"), document.getElementById("download-release")].filter(Boolean);
+  var rotulos = [document.getElementById("download-label"), document.querySelector("#download-release span")].filter(Boolean);
+  var detalhes = document.getElementById("download-details");
   var versao = document.getElementById("versao");
-  if (!botao) return;
+  if (!botoes.length) return;
 
-  // Por padrão o botão baixa o código-fonte (.zip). Se existir uma release com .exe,
-  // o botão passa a baixar o executável. Se a consulta falhar, nada muda.
-  fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/releases/latest")
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (release) {
+  // A lista inclui pré-releases; /releases/latest não as retorna.
+  fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/releases?per_page=10")
+    .then(function (r) { return r.ok ? r.json() : []; })
+    .then(function (releases) {
+      var release = (releases || []).find(function (item) {
+        return !item.draft && (item.assets || []).some(function (asset) {
+          return /\.exe$/i.test(asset.name) || /^Blockslab-exe\.zip$/i.test(asset.name);
+        });
+      });
       if (!release) return;
-      var exe = (release.assets || []).find(function (a) { return /\.exe$/i.test(a.name); });
-      if (!exe) return;
 
-      botao.href = exe.browser_download_url;
-      if (rotulo) rotulo.textContent = "Baixar para Windows (.exe)";
-      if (transp) {
-        var texto = transp.querySelector("span");
-        if (texto) texto.textContent = "Versão " + release.tag_name + " · requer o .NET 6 Desktop Runtime.";
-      }
+      var assets = release.assets || [];
+      var asset = assets.find(function (item) { return /\.exe$/i.test(item.name); }) ||
+        assets.find(function (item) { return /^Blockslab-exe\.zip$/i.test(item.name); });
+      if (!asset || !asset.browser_download_url) return;
+
+      botoes.forEach(function (botao) { botao.href = asset.browser_download_url; });
+      var formato = /\.exe$/i.test(asset.name) ? ".exe" : ".zip";
+      rotulos.forEach(function (rotulo) { rotulo.textContent = "Baixar para Windows (" + formato + ")"; });
+      if (detalhes) detalhes.textContent = "Versão " + release.tag_name + " · requer o .NET 6 Desktop Runtime.";
       if (versao && release.tag_name) versao.textContent = "B / " + release.tag_name.replace(/^v/i, "");
     })
-    .catch(function () { /* mantém o padrão */ });
+    .catch(function () { /* mantém o link da release publicada */ });
 })();
 
 
@@ -100,7 +105,7 @@
     }).catch(function () { /* mantém a imagem padrão */ });
   }
 
-  function carregarStatus() {
+  function carregarStatus(tentativa) {
     return pedir(API.presence + "/v1/presence/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -108,15 +113,20 @@
     }).then(function (r) {
       var p = r && r.userPresences && r.userPresences[0];
       if (!p) throw new Error("sem dados");
+      if ([0, 1, 2, 3].indexOf(p.userPresenceType) === -1) throw new Error("status inválido");
       var ultimo = p.lastOnline ? "Visto pela última vez " + tempoRelativo(p.lastOnline) : "";
       switch (p.userPresenceType) {
+        case 0: mostrarStatus("off", "Offline", ultimo); break;
         case 1: mostrarStatus("on", "Online agora", ""); break;
         case 2: mostrarStatus("game", "Jogando agora", ""); break;
         case 3: mostrarStatus("studio", "Criando no Roblox Studio", ""); break;
-        default: mostrarStatus("off", "Offline", ultimo);
       }
     }).catch(function () {
-      mostrarStatus("off", "Status indisponível no momento", "Abra o perfil no Roblox para ver.");
+      if (!tentativa) {
+        return new Promise(function (resolve) { setTimeout(resolve, 1000); })
+          .then(function () { return carregarStatus(true); });
+      }
+      mostrarStatus("unknown", "Status indisponível no momento", "Abra o perfil no Roblox para ver.");
     });
   }
 
