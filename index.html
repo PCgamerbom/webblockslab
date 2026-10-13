@@ -1,12 +1,43 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light" data-mode="system" data-accent="violet" data-font="system" data-text-size="normal">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blockslab — Roblox, do seu jeito</title>
 <meta name="description" content="Blockslab: launcher comunitário e de código aberto para Roblox no Windows, com perfis de gráficos, mods, Discord Rich Presence e backup das configurações.">
-<meta name="theme-color" content="#f7f5f0">
+<meta name="theme-color" content="#f8f9ff">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Blockslab — Roblox, do seu jeito">
+<meta property="og:description" content="Launcher comunitário e de código aberto para Roblox no Windows.">
 <link rel="icon" href="assets/favicon.png">
+<script>
+  (function () {
+    var padrao = { mode: "system", accent: "violet", font: "system", textSize: "normal" };
+    var opcoes = {
+      mode: ["system", "light", "dark"],
+      accent: ["violet", "blue", "green", "pink", "orange"],
+      font: ["system", "rounded", "serif", "mono"],
+      textSize: ["normal", "large", "larger"]
+    };
+    var preferencias = padrao;
+    try {
+      var salvas = JSON.parse(localStorage.getItem("blockslab-appearance-v1") || "null");
+      if (salvas && typeof salvas === "object") {
+        Object.keys(opcoes).forEach(function (chave) {
+          if (opcoes[chave].indexOf(salvas[chave]) !== -1) preferencias[chave] = salvas[chave];
+        });
+      }
+    } catch (_) {}
+    var tema = preferencias.mode === "system"
+      ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : preferencias.mode;
+    document.documentElement.dataset.mode = preferencias.mode;
+    document.documentElement.dataset.theme = tema;
+    document.documentElement.dataset.accent = preferencias.accent;
+    document.documentElement.dataset.font = preferencias.font;
+    document.documentElement.dataset.textSize = preferencias.textSize;
+  })();
+</script>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -26,6 +57,7 @@
 <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
 <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
 <symbol id="i-external" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+<symbol id="i-palette" viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 0 18h1.3a1.7 1.7 0 0 0 1.2-2.9 1.7 1.7 0 0 1 1.2-2.9H18a3 3 0 0 0 3-3c0-5.1-4-9.2-9-9.2Z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10" cy="7.5" r="1"/><circle cx="14.5" cy="7.5" r="1"/></symbol>
 </svg>
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
 
@@ -39,6 +71,45 @@
       <a class="nl" href="#perguntas">Perguntas</a>
       <a class="btn small primary" href="#downloads">Downloads</a>
     </nav>
+    <details class="appearance" id="appearance-settings">
+      <summary class="appearance-trigger" aria-label="Personalizar aparência">
+        <svg class="bi" aria-hidden="true"><use href="#i-palette"/></svg><span>Aparência</span>
+      </summary>
+      <div class="appearance-panel" role="group" aria-label="Personalização do site">
+        <div class="appearance-heading">
+          <strong>Personalizar o site</strong>
+          <button class="appearance-reset" id="appearance-reset" type="button">Restaurar</button>
+        </div>
+        <label for="color-mode">Tema</label>
+        <select id="color-mode">
+          <option value="system">Seguir o sistema</option>
+          <option value="light">Claro</option>
+          <option value="dark">Escuro</option>
+        </select>
+        <span class="appearance-label" id="accent-label">Cor de destaque</span>
+        <div class="swatches" role="group" aria-labelledby="accent-label">
+          <button class="swatch" type="button" data-accent-choice="violet" aria-label="Roxo" aria-pressed="true"></button>
+          <button class="swatch" type="button" data-accent-choice="blue" aria-label="Azul" aria-pressed="false"></button>
+          <button class="swatch" type="button" data-accent-choice="green" aria-label="Verde" aria-pressed="false"></button>
+          <button class="swatch" type="button" data-accent-choice="pink" aria-label="Rosa" aria-pressed="false"></button>
+          <button class="swatch" type="button" data-accent-choice="orange" aria-label="Laranja" aria-pressed="false"></button>
+        </div>
+        <label for="font-family">Fonte</label>
+        <select id="font-family">
+          <option value="system">Padrão do sistema</option>
+          <option value="rounded">Arredondada</option>
+          <option value="serif">Serifada</option>
+          <option value="mono">Monoespaçada</option>
+        </select>
+        <label for="text-size">Tamanho do texto</label>
+        <select id="text-size">
+          <option value="normal">Normal</option>
+          <option value="large">Grande</option>
+          <option value="larger">Maior</option>
+        </select>
+        <span class="sr-only" id="appearance-feedback" aria-live="polite"></span>
+      </div>
+    </details>
   </div>
 </header>
 
@@ -112,13 +183,13 @@
       <h2>Quem faz o Blockslab.</h2>
       <article class="creator" id="criador-card" aria-label="Perfil do criador no Roblox">
         <div class="avatar-box">
-          <img id="cr-avatar" src="assets/logo.png" alt="Avatar de PCgamerbom no Roblox" width="260" height="260" referrerpolicy="no-referrer">
+          <img id="cr-avatar" src="assets/logo.png" alt="Avatar de PCgamerbom no Roblox" width="260" height="260" loading="lazy" decoding="async" referrerpolicy="no-referrer">
         </div>
         <div class="cr-info">
           <p class="cr-role">Criador do Blockslab</p>
           <h3 id="cr-display">PCgamerbom</h3>
           <p class="cr-user" id="cr-user">@PCgamerbom</p>
-          <p class="cr-status" id="cr-status" aria-live="polite"><i class="sdot off" id="cr-dot"></i><span id="cr-status-text">Carregando status…</span></p>
+          <p class="cr-status" id="cr-status" role="status" aria-live="polite" aria-atomic="true"><i class="sdot off" id="cr-dot" aria-hidden="true"></i><span id="cr-status-text">Carregando status…</span></p>
           <p class="cr-last" id="cr-last"></p>
           <a class="btn ghost" href="https://www.roblox.com/users/2281180949/profile" rel="noopener"><svg class="bi" aria-hidden="true"><use href="#i-external"/></svg><span>Ver perfil no Roblox</span></a>
           <p class="cr-note">Dados do Roblox atualizados a cada 30 segundos, carregados via RoProxy.</p>
