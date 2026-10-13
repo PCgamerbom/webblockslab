@@ -222,7 +222,15 @@
     opcoes.signal = ctrl.signal;
     return fetch(url, opcoes).then(function (r) {
       clearTimeout(timer);
-      if (!r.ok) throw new Error("HTTP " + r.status);
+      if (!r.ok) {
+        var erro = new Error("HTTP " + r.status);
+        erro.status = r.status;
+        var retryAfter = r.headers && r.headers.get("Retry-After");
+        if (retryAfter && !isNaN(Number(retryAfter))) {
+          erro.retryAfterMs = Math.min(Number(retryAfter) * 1000, 60000);
+        }
+        throw erro;
+      }
       return r.json();
     }, function (e) { clearTimeout(timer); throw e; });
   }
@@ -243,6 +251,7 @@
   function mostrarStatus(tipo, texto, ultimo) {
     if (el.dot) el.dot.className = "sdot " + tipo;
     el.status.textContent = texto;
+    if (el.status.parentNode) el.status.parentNode.dataset.presence = tipo;
     if (el.last) el.last.textContent = ultimo || "";
   }
 
@@ -277,19 +286,23 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userIds: [USER_ID] })
     }).then(function (r) {
-      var p = r && r.userPresences && r.userPresences[0];
-      if (!p) throw new Error("sem dados");
+      var presencas = r && r.userPresences;
+      var p = Array.isArray(presencas) && presencas.find(function (item) {
+        return item && Number(item.userId) === USER_ID;
+      });
+      if (!p) throw new Error("sem dados para o perfil");
       if ([0, 1, 2, 3].indexOf(p.userPresenceType) === -1) throw new Error("status inválido");
       var ultimo = p.lastOnline ? "Visto pela última vez " + tempoRelativo(p.lastOnline) : "";
       switch (p.userPresenceType) {
-        case 0: mostrarStatus("off", "Offline", ultimo); break;
+        case 0: mostrarStatus("off", "Offline no Roblox", ultimo); break;
         case 1: mostrarStatus("on", "Online agora", ""); break;
-        case 2: mostrarStatus("game", "Jogando agora", ""); break;
+        case 2: mostrarStatus("game", "Jogando agora", p.lastLocation || "Ativo no Roblox"); break;
         case 3: mostrarStatus("studio", "Criando no Roblox Studio", ""); break;
       }
-    }).catch(function () {
+    }).catch(function (erro) {
       if (!tentativa) {
-        return new Promise(function (resolve) { setTimeout(resolve, 1000); })
+        var espera = erro.retryAfterMs || (erro.status === 429 ? 10000 : 2000);
+        return new Promise(function (resolve) { setTimeout(resolve, espera); })
           .then(function () { return consultarStatus(true); });
       }
       mostrarStatus("unknown", "Status indisponível no momento", "Abra o perfil no Roblox para ver.");
