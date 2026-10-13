@@ -182,8 +182,8 @@
 })();
 
 // ---------- Criador: perfil do Roblox em tempo real ----------
-// Troque USER_ID para outro perfil. Os dados vêm do RoProxy (espelho público das APIs do Roblox),
-// porque as APIs oficiais do Roblox bloqueiam chamadas diretas de sites (CORS).
+// Perfil e avatar usam RoProxy; a presença usa a Pages Function do mesmo domínio
+// para consultar a API oficial sem depender de CORS no navegador.
 (function () {
   var USER_ID = 2281180949;
   var INTERVALO = 30000;          // status: a cada 30 s
@@ -191,7 +191,7 @@
   var API = {
     users: "https://users.roproxy.com",
     thumbs: "https://thumbnails.roproxy.com",
-    presence: "https://presence.roproxy.com"
+    presence: "/api/presence"
   };
 
   var el = {
@@ -281,7 +281,7 @@
   }
 
   function consultarStatus(tentativa) {
-    return pedir(API.presence + "/v1/presence/users", {
+    return pedir(API.presence, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userIds: [USER_ID] })
