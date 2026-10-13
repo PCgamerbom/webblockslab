@@ -3,6 +3,7 @@
 (function () {
   var OWNER = "PCgamerbom";
   var REPO = "Blockslab";
+  var TIMEOUT = 8000;
 
   var botoes = [document.getElementById("download"), document.getElementById("download-release")].filter(Boolean);
   var rotulos = [document.getElementById("download-label"), document.querySelector("#download-release span")].filter(Boolean);
@@ -10,31 +11,175 @@
   var versao = document.getElementById("versao");
   if (!botoes.length) return;
 
-  // A lista inclui pré-releases; /releases/latest não as retorna.
-  fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/releases?per_page=10")
-    .then(function (r) { return r.ok ? r.json() : []; })
+  function pedirReleases() {
+    var ctrl = new AbortController();
+    var timer = setTimeout(function () { ctrl.abort(); }, TIMEOUT);
+    return fetch("https://api.github.com/repos/" + OWNER + "/" + REPO + "/releases?per_page=10", {
+      headers: { Accept: "application/vnd.github+json" },
+      signal: ctrl.signal
+    }).then(function (r) {
+      clearTimeout(timer);
+      if (!r.ok) throw new Error("GitHub API HTTP " + r.status);
+      return r.json();
+    }, function (e) {
+      clearTimeout(timer);
+      throw e;
+    });
+  }
+
+  // Mantém os links diretos do HTML caso a API esteja indisponível ou limitada.
+  pedirReleases()
     .then(function (releases) {
-      var release = (releases || []).find(function (item) {
-        return !item.draft && (item.assets || []).some(function (asset) {
-          return /\.exe$/i.test(asset.name) || /^Blockslab-exe\.zip$/i.test(asset.name);
+      if (!Array.isArray(releases)) throw new Error("Resposta inválida da API de releases");
+      var release = releases.find(function (item) {
+        return item && !item.draft && Array.isArray(item.assets) && item.assets.some(function (asset) {
+          return asset && typeof asset.name === "string" &&
+            (/\.exe$/i.test(asset.name) || /^Blockslab-exe\.zip$/i.test(asset.name));
         });
       });
       if (!release) return;
 
-      var assets = release.assets || [];
-      var asset = assets.find(function (item) { return /\.exe$/i.test(item.name); }) ||
-        assets.find(function (item) { return /^Blockslab-exe\.zip$/i.test(item.name); });
-      if (!asset || !asset.browser_download_url) return;
+      var assets = release.assets;
+      var asset = assets.find(function (item) {
+        return item && typeof item.name === "string" && /\.exe$/i.test(item.name);
+      }) || assets.find(function (item) {
+        return item && typeof item.name === "string" && /^Blockslab-exe\.zip$/i.test(item.name);
+      });
+      if (!asset || typeof asset.browser_download_url !== "string") return;
+      var downloadUrl;
+      try {
+        downloadUrl = new URL(asset.browser_download_url);
+      } catch (_) {
+        return;
+      }
+      if (downloadUrl.protocol !== "https:" || downloadUrl.hostname !== "github.com" ||
+          downloadUrl.pathname.indexOf("/" + OWNER + "/" + REPO + "/releases/download/") !== 0) return;
 
-      botoes.forEach(function (botao) { botao.href = asset.browser_download_url; });
+      botoes.forEach(function (botao) { botao.href = downloadUrl.href; });
       var formato = /\.exe$/i.test(asset.name) ? ".exe" : ".zip";
       rotulos.forEach(function (rotulo) { rotulo.textContent = "Baixar para Windows (" + formato + ")"; });
-      if (detalhes) detalhes.textContent = "Versão " + release.tag_name + " · requer o .NET 6 Desktop Runtime.";
-      if (versao && release.tag_name) versao.textContent = "B / " + release.tag_name.replace(/^v/i, "");
+      if (detalhes && typeof release.tag_name === "string") {
+        detalhes.textContent = "Versão " + release.tag_name + " · requer o .NET 6 Desktop Runtime.";
+      }
+      if (versao && typeof release.tag_name === "string") {
+        versao.textContent = "B / " + release.tag_name.replace(/^v/i, "");
+      }
     })
-    .catch(function () { /* mantém o link da release publicada */ });
+    .catch(function () { /* os links diretos publicados no HTML continuam disponíveis */ });
 })();
 
+// ---------- Aparência personalizável ----------
+(function () {
+  var CHAVE = "blockslab-appearance-v1";
+  var padrao = { mode: "system", accent: "violet", font: "system", textSize: "normal" };
+  var permitidos = {
+    mode: ["system", "light", "dark"],
+    accent: ["violet", "blue", "green", "pink", "orange"],
+    font: ["system", "rounded", "serif", "mono"],
+    textSize: ["normal", "large", "larger"]
+  };
+  var raiz = document.documentElement;
+  var painel = document.getElementById("appearance-settings");
+  var controles = {
+    mode: document.getElementById("color-mode"),
+    font: document.getElementById("font-family"),
+    textSize: document.getElementById("text-size")
+  };
+  var swatches = Array.prototype.slice.call(document.querySelectorAll("[data-accent-choice]"));
+  var feedback = document.getElementById("appearance-feedback");
+  var reset = document.getElementById("appearance-reset");
+  if (!painel || !controles.mode || !controles.font || !controles.textSize) return;
+
+  var preferencias = {
+    mode: raiz.dataset.mode,
+    accent: raiz.dataset.accent,
+    font: raiz.dataset.font,
+    textSize: raiz.dataset.textSize
+  };
+  Object.keys(permitidos).forEach(function (chave) {
+    if (permitidos[chave].indexOf(preferencias[chave]) === -1) preferencias[chave] = padrao[chave];
+  });
+  controles.mode.value = preferencias.mode;
+  controles.font.value = preferencias.font;
+  controles.textSize.value = preferencias.textSize;
+
+  function aplicarTema() {
+    var escuro = preferencias.mode === "dark" ||
+      (preferencias.mode === "system" && window.matchMedia &&
+        window.matchMedia("(prefers-color-scheme: dark)").matches);
+    raiz.dataset.mode = preferencias.mode;
+    raiz.dataset.theme = escuro ? "dark" : "light";
+    raiz.dataset.accent = preferencias.accent;
+    raiz.dataset.font = preferencias.font;
+    raiz.dataset.textSize = preferencias.textSize;
+    swatches.forEach(function (botao) {
+      botao.setAttribute("aria-pressed", String(botao.dataset.accentChoice === preferencias.accent));
+    });
+    var themeColor = document.querySelector('meta[name="theme-color"]');
+    if (themeColor) themeColor.content = escuro ? "#11121b" : "#f8f9ff";
+  }
+
+  function salvar(mensagem) {
+    try {
+      localStorage.setItem(CHAVE, JSON.stringify(preferencias));
+      if (feedback) feedback.textContent = mensagem;
+    } catch (_) {
+      if (feedback) feedback.textContent = mensagem + " A preferência vale apenas nesta sessão.";
+    }
+  }
+
+  function alterar(chave, valor, mensagem) {
+    if (permitidos[chave].indexOf(valor) === -1) return;
+    preferencias[chave] = valor;
+    aplicarTema();
+    salvar(mensagem);
+  }
+
+  controles.mode.addEventListener("change", function () {
+    alterar("mode", controles.mode.value, "Tema atualizado.");
+  });
+  controles.font.addEventListener("change", function () {
+    alterar("font", controles.font.value, "Fonte atualizada.");
+  });
+  controles.textSize.addEventListener("change", function () {
+    alterar("textSize", controles.textSize.value, "Tamanho do texto atualizado.");
+  });
+  swatches.forEach(function (botao) {
+    botao.addEventListener("click", function () {
+      alterar("accent", botao.dataset.accentChoice, "Cor atualizada.");
+    });
+  });
+  if (reset) {
+    reset.addEventListener("click", function () {
+      preferencias = {
+        mode: padrao.mode,
+        accent: padrao.accent,
+        font: padrao.font,
+        textSize: padrao.textSize
+      };
+      controles.mode.value = preferencias.mode;
+      controles.font.value = preferencias.font;
+      controles.textSize.value = preferencias.textSize;
+      aplicarTema();
+      salvar("Aparência restaurada.");
+    });
+  }
+  painel.addEventListener("keydown", function (evento) {
+    if (evento.key === "Escape") {
+      painel.open = false;
+      painel.querySelector("summary").focus();
+    }
+  });
+  if (window.matchMedia) {
+    var esquemaSistema = window.matchMedia("(prefers-color-scheme: dark)");
+    var atualizarSistema = function () {
+      if (preferencias.mode === "system") aplicarTema();
+    };
+    if (esquemaSistema.addEventListener) esquemaSistema.addEventListener("change", atualizarSistema);
+    else if (esquemaSistema.addListener) esquemaSistema.addListener(atualizarSistema);
+  }
+  aplicarTema();
+})();
 
 // ---------- Criador: perfil do Roblox em tempo real ----------
 // Troque USER_ID para outro perfil. Os dados vêm do RoProxy (espelho público das APIs do Roblox),
@@ -58,6 +203,17 @@
     last: document.getElementById("cr-last")
   };
   if (!el.status) return;
+  var emAndamento = false;
+  var avatarEmAndamento = false;
+  var avatarOriginal = el.avatar && el.avatar.getAttribute("src");
+
+  function restaurarAvatar() {
+    if (!el.avatar || !avatarOriginal) return;
+    el.avatar.onerror = null;
+    el.avatar.src = avatarOriginal;
+  }
+
+  if (el.avatar) el.avatar.onerror = restaurarAvatar;
 
   function pedir(url, opcoes) {
     var ctrl = new AbortController();
@@ -85,27 +241,37 @@
   }
 
   function mostrarStatus(tipo, texto, ultimo) {
-    el.dot.className = "sdot " + tipo;
+    if (el.dot) el.dot.className = "sdot " + tipo;
     el.status.textContent = texto;
-    el.last.textContent = ultimo || "";
+    if (el.last) el.last.textContent = ultimo || "";
   }
 
   function carregarPerfil() {
     return pedir(API.users + "/v1/users/" + USER_ID).then(function (u) {
-      if (u && u.displayName) el.display.textContent = u.displayName;
-      if (u && u.name) el.user.textContent = "@" + u.name;
+      if (u && u.displayName && el.display) el.display.textContent = u.displayName;
+      if (u && u.name && el.user) el.user.textContent = "@" + u.name;
     }).catch(function () { /* mantém os nomes padrão do HTML */ });
   }
 
   function carregarAvatar() {
+    if (!el.avatar) return Promise.resolve();
+    if (avatarEmAndamento) return Promise.resolve();
+    avatarEmAndamento = true;
     var url = API.thumbs + "/v1/users/avatar?userIds=" + USER_ID + "&size=420x420&format=Png&isCircular=false";
     return pedir(url).then(function (r) {
       var item = r && r.data && r.data[0];
-      if (item && item.state === "Completed" && item.imageUrl) el.avatar.src = item.imageUrl;
-    }).catch(function () { /* mantém a imagem padrão */ });
+      if (item && item.state === "Completed" && item.imageUrl) {
+        el.avatar.onerror = restaurarAvatar;
+        el.avatar.src = item.imageUrl;
+      }
+    }).catch(function () {
+      /* mantém a imagem padrão */
+    }).then(function () {
+      avatarEmAndamento = false;
+    });
   }
 
-  function carregarStatus(tentativa) {
+  function consultarStatus(tentativa) {
     return pedir(API.presence + "/v1/presence/users", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -124,8 +290,19 @@
     }).catch(function () {
       if (!tentativa) {
         return new Promise(function (resolve) { setTimeout(resolve, 1000); })
-          .then(function () { return carregarStatus(true); });
+          .then(function () { return consultarStatus(true); });
       }
+      mostrarStatus("unknown", "Status indisponível no momento", "Abra o perfil no Roblox para ver.");
+    });
+  }
+
+  function carregarStatus() {
+    if (emAndamento) return;
+    emAndamento = true;
+    consultarStatus(false).then(function () {
+      emAndamento = false;
+    }, function () {
+      emAndamento = false;
       mostrarStatus("unknown", "Status indisponível no momento", "Abra o perfil no Roblox para ver.");
     });
   }
