@@ -3,8 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#0d0d12" />
-    <meta name="description" content="Noel.dev — perfil público do Roblox, presença, comunidades, projetos e links de Noelzin." />
+    <meta name="theme-color" content="#0a0c12" />
+    <meta name="description" content="Noel.dev — perfil público do Roblox, presença, comunidades, links e projetos de Noelzin." />
     <meta property="og:title" content="Noelzin — Roblox Hub" />
     <meta property="og:description" content="Perfil público do Roblox, presença, comunidades e links de Noelzin." />
     <meta property="og:type" content="website" />
@@ -16,6 +16,9 @@
     <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
+    <div class="cursor cursor--outer" aria-hidden="true"></div>
+    <div class="cursor cursor--inner" aria-hidden="true"></div>
+
     <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
 
     <header class="topbar">
@@ -50,25 +53,21 @@
     </header>
 
     <main id="conteudo">
-      <section class="hero section" id="inicio">
+      <section class="hero section reveal" id="inicio">
         <div class="container hero-grid">
           <div class="hero-copy">
-            <span class="eyebrow">PORTFÓLIO PESSOAL</span>
+            <span class="eyebrow">Portfolio pessoal</span>
             <h1>
               Salve, eu sou
               <span class="headline-accent">Noelzin.</span>
             </h1>
             <p class="hero-text">
-              Meu espaço pessoal na internet, reunindo meu perfil público do Roblox, presença, comunidades, projetos e links importantes.
+              Meu espaço pessoal na internet, reunindo perfil público do Roblox, presença, comunidades, projetos e links importantes.
             </p>
 
             <div class="cta-row">
-              <a class="button primary" href="https://www.roblox.com/users/2281180949/profile" target="_blank" rel="noopener noreferrer">
-                Ver no Roblox
-              </a>
-              <a class="button secondary" href="https://discord.com/users/noel6956" target="_blank" rel="noopener noreferrer">
-                Meu Discord
-              </a>
+              <a class="button primary" href="https://www.roblox.com/users/2281180949/profile" target="_blank" rel="noopener noreferrer">Ver no Roblox</a>
+              <a class="button secondary" href="https://discord.com/users/noel6956" target="_blank" rel="noopener noreferrer">Meu Discord</a>
             </div>
 
             <div class="status-strip" aria-live="polite">
@@ -78,9 +77,9 @@
             </div>
           </div>
 
-          <aside class="profile-card hero-card" aria-label="Perfil do Roblox">
+          <aside class="profile-card hero-card reveal reveal-delay-1" aria-label="Perfil do Roblox">
             <div class="profile-head">
-              <img id="profileAvatar" class="profile-avatar" src="" alt="Avatar do Roblox de PCgamerbom" />
+              <img id="profileAvatar" class="profile-avatar" src="" alt="Avatar do Roblox de Noelzin" />
               <div>
                 <p class="mini-label">Roblox</p>
                 <h2 id="displayName">Noelzin</h2>
@@ -107,18 +106,18 @@
         </div>
       </section>
 
-      <section class="section" id="roblox">
+      <section class="section reveal" id="roblox">
         <div class="container">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">01 / PERFIL</p>
+              <p class="eyebrow">01 / Perfil</p>
               <h2>Meu Roblox.</h2>
             </div>
             <button id="refresh" class="button ghost" type="button">↻ Atualizar dados</button>
           </div>
 
           <div class="profile-panel">
-            <div class="profile-summary">
+            <div class="profile-summary reveal reveal-delay-1">
               <div class="profile-image-wrap">
                 <img id="profileAvatarLarge" src="" alt="Avatar público de Noelzin" />
               </div>
@@ -130,20 +129,16 @@
                 </div>
 
                 <h3 id="displayNameLarge">Noelzin</h3>
-                <p id="profileCreated" class="profile-created">Criado em —</p>
+                <p id="profileCreated" class="profile-created">Conta criada em —</p>
 
                 <div class="profile-actions">
-                  <a class="button primary small" id="profileLink" href="https://www.roblox.com/users/2281180949/profile" target="_blank" rel="noopener noreferrer">
-                    Abrir perfil
-                  </a>
-                  <button id="copyDiscord" class="button secondary small" type="button">
-                    Copiar Discord
-                  </button>
+                  <a class="button primary small" id="profileLink" href="https://www.roblox.com/users/2281180949/profile" target="_blank" rel="noopener noreferrer">Abrir perfil</a>
+                  <button id="copyDiscord" class="button secondary small" type="button">Copiar Discord</button>
                 </div>
               </div>
             </div>
 
-            <div class="presence-panel">
+            <div class="presence-panel reveal reveal-delay-2">
               <div class="presence-header">
                 <div>
                   <p class="eyebrow subtle">Status atual</p>
@@ -177,11 +172,11 @@
         </div>
       </section>
 
-      <section class="section community-section" id="comunidades">
+      <section class="section community-section reveal" id="comunidades">
         <div class="container">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">02 / ESPAÇO</p>
+              <p class="eyebrow">02 / Espaço</p>
               <h2>Minhas comunidades.</h2>
             </div>
             <span class="count-pill" id="groupCount">0</span>
@@ -191,45 +186,45 @@
         </div>
       </section>
 
-      <section class="section" id="sobre">
+      <section class="section reveal" id="sobre">
         <div class="container">
           <div class="section-heading narrow">
             <div>
-              <p class="eyebrow">03 / SOBRE</p>
+              <p class="eyebrow">03 / Sobre</p>
               <h2>Sobre mim.</h2>
             </div>
           </div>
 
           <div class="about-grid">
-            <article class="panel about-card">
+            <article class="panel about-card reveal reveal-delay-1">
               <p>
-                Navego pelo mundo digital com foco em experiências criativas, jogos, interfaces e pequenas comunidades online.
+                Navego pelo mundo digital com foco em criação, experiências online e comunidades, sempre buscando uma presença com identidade própria.
               </p>
             </article>
-            <article class="panel about-card">
+            <article class="panel about-card reveal reveal-delay-2">
               <p>
-                Este é o meu espaço para compartilhar presença pública, projetos, comunidades e os pontos de conexão que me definem na internet.
+                Este é o meu espaço para compartilhar presença pública, interesses digitais e os pontos de conexão que me acompanham na internet.
               </p>
             </article>
           </div>
         </div>
       </section>
 
-      <section class="section links-section" id="links">
+      <section class="section reveal" id="links">
         <div class="container">
           <div class="section-heading">
             <div>
-              <p class="eyebrow">04 / LINKS</p>
+              <p class="eyebrow">04 / Links</p>
               <h2>Me encontra por aí.</h2>
             </div>
           </div>
 
           <div class="links-grid">
-            <a class="link-card" href="https://discord.com/users/noel6956" target="_blank" rel="noopener noreferrer">
+            <a class="link-card reveal reveal-delay-1" href="https://discord.com/users/noel6956" target="_blank" rel="noopener noreferrer">
               <span class="link-card-label">Discord</span>
               <strong>noel6956</strong>
             </a>
-            <a class="link-card" href="https://www.roblox.com/users/2281180949/profile" target="_blank" rel="noopener noreferrer">
+            <a class="link-card reveal reveal-delay-2" href="https://www.roblox.com/users/2281180949/profile" target="_blank" rel="noopener noreferrer">
               <span class="link-card-label">Roblox</span>
               <strong>@PCgamerbom</strong>
             </a>
@@ -271,31 +266,31 @@
       </div>
 
       <div class="preset-list" aria-label="Temas prontos">
-        <button class="preset-button active" data-theme="violet" type="button">Roxo Neon</button>
-        <button class="preset-button" data-theme="cyber" type="button">Azul Cyber</button>
+        <button class="preset-button active" data-theme="violet" type="button">Roxo</button>
+        <button class="preset-button" data-theme="cyber" type="button">Azul</button>
         <button class="preset-button" data-theme="red" type="button">Vermelho</button>
-        <button class="preset-button" data-theme="green" type="button">Verde Neon</button>
+        <button class="preset-button" data-theme="green" type="button">Verde</button>
         <button class="preset-button" data-theme="rose" type="button">Rosa</button>
         <button class="preset-button" data-theme="gold" type="button">Dourado</button>
-        <button class="preset-button" data-theme="mono" type="button">Preto e branco</button>
+        <button class="preset-button" data-theme="mono" type="button">Mono</button>
       </div>
 
       <div class="color-grid">
         <label>
-          <span>Cor principal</span>
+          <span>Accent</span>
           <input id="accentInput" type="color" value="#8b5cf6" />
         </label>
         <label>
-          <span>Cor secundária</span>
+          <span>Second</span>
           <input id="accentTwoInput" type="color" value="#7dd3fc" />
         </label>
         <label>
           <span>Fundo</span>
-          <input id="backgroundInput" type="color" value="#0b0d12" />
+          <input id="backgroundInput" type="color" value="#0a0c12" />
         </label>
         <label>
           <span>Cards</span>
-          <input id="surfaceInput" type="color" value="#111827" />
+          <input id="surfaceInput" type="color" value="#121a2b" />
         </label>
         <label>
           <span>Texto</span>
@@ -303,13 +298,13 @@
         </label>
         <label>
           <span>Bordas</span>
-          <input id="borderInput" type="color" value="#2b3349" />
+          <input id="borderInput" type="color" value="#2b3648" />
         </label>
       </div>
 
       <div class="theme-actions">
         <button class="button primary small" id="applyThemeButton" type="button">Aplicar</button>
-        <button class="button ghost small" id="resetTheme" type="button">Restaurar padrão</button>
+        <button class="button ghost small" id="resetTheme" type="button">Padrão</button>
       </div>
     </aside>
 
