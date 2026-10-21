@@ -2,11 +2,11 @@
   "name": "noel-roblox-hub",
   "version": "1.0.0",
   "private": true,
-  "description": "Site pessoal com status e dados públicos do Roblox (Node.js nativo)",
+  "description": "Site pessoal com status e dados públicos do Roblox (Cloudflare Pages)",
   "scripts": {
-    "start": "node server.js"
+    "dev": "npx serve .",
+    "check": "node --check app.js && node --input-type=module -e \"import('file://' + process.cwd() + '/functions/api/profile.js'); import('file://' + process.cwd() + '/functions/api/health.js');\""
   },
-  "dependencies": {},
   "engines": {
     "node": ">=18"
   }
