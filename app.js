@@ -1,28 +1,198 @@
 const $ = (id) => document.getElementById(id);
-const statusClass = (type) => type === 1 || type === 2 || type === 3 ? 'online' : 'offline';
+
+const statusClass = (type) => (Number(type) === 1 || Number(type) === 2 || Number(type) === 3 ? 'online' : 'offline');
+
 function setStatusVisual(type) {
   const online = statusClass(type) === 'online';
-  ['heroDot', 'presenceDot', 'avatarStatus'].forEach(id => {
+  ['heroDot', 'presenceDot', 'avatarStatus'].forEach((id) => {
     const el = $(id);
     if (el) el.style.background = online ? 'var(--green)' : '#888';
   });
 }
-function escapeHTML(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function formatDate(v){if(!v)return 'Não disponível';const d=new Date(v);return Number.isNaN(+d)?'Não disponível':d.toLocaleDateString('pt-BR',{month:'short',year:'numeric'});}
-async function loadProfile(){
-  const btn = $('refresh');
-  if (btn) { btn.disabled = true; btn.textContent = '↻ Atualizando…'; }
+
+function escapeHTML(s = '') {
+  return String(s).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[c]));
+}
+
+function formatDate(v) {
+  if (!v) return 'Não disponível';
+  const d = new Date(v);
+  return Number.isNaN(+d) ? 'Não disponível' : d.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+}
+
+function setTextBySelectors(selectors, value) {
+  let changed = false;
+  const nodes = document.querySelectorAll(selectors);
+  nodes.forEach((node) => {
+    if (node) {
+      node.textContent = value;
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+function setImageBySelectors(selectors, value) {
+  let changed = false;
+  const nodes = document.querySelectorAll(selectors);
+  nodes.forEach((node) => {
+    if (node) {
+      node.src = value || '';
+      changed = true;
+    }
+  });
+  return changed;
+}
+
+function clearApiError() {
   const apiError = $('apiError');
-  if (apiError) apiError.classList.add('hidden');
-  try {const r=await fetch('/api/profile',{cache:'no-store',headers:{'Accept':'application/json'}});const contentType=r.headers.get('content-type')||'';if(!contentType.includes('application/json')){const body=(await r.text()).slice(0,120);throw new Error('O servidor retornou HTML em vez de JSON. Isso geralmente acontece quando o site está hospedado como página estática (ex.: GitHub Pages) e o endpoint /api/profile não existe. Publique o projeto usando o servidor Node.js.');}const data=await r.json();if(!r.ok)throw new Error(data.error||'Falha ao consultar a API.');$('displayName').textContent=data.displayName;$('username').textContent=data.username;$('infoUsername').textContent=data.username;$('infoDisplay').textContent=data.displayName;$('userId').textContent=data.id;$('avatar').src=data.avatar||$('avatar').src;$('profileLink').href=data.profileUrl;$('robloxQuickLink').href=data.profileUrl;$('accountCreated').textContent=formatDate(data.created);$('groupCount').textContent=data.groups.length;$('groupPill').textContent=`${data.groups.length} comunidade${data.groups.length===1?'':'s'}`;$('presenceStatus').textContent=data.status;$('miniStatus').textContent=data.status;$('heroStatus').textContent=`Roblox: ${data.status}`;$('presenceText').textContent=data.presenceType===2&&data.game?'Sua sessão está em um jogo agora.':data.presenceType===3?'Ativo no Roblox Studio.':data.presenceType===1?'Conta conectada ao Roblox.':'Nenhuma sessão de jogo pública detectada.';$('statusSymbol').textContent=data.presenceType===2?'◈':data.presenceType===1?'●':'◌';setStatusVisual(data.presenceType);if(data.game){$('gameName').textContent=data.game.name;$('gameCreator').textContent=`Criado por ${data.game.creatorName}${data.game.creatorType==='Group'?' (grupo)':''}`;$('gameCover').classList.remove('placeholder-cover');$('gameCover').innerHTML='';if(data.game.image){const img=document.createElement('img');img.src=data.game.image;img.alt=`Capa do jogo ${data.game.name}`;img.className='game-cover';$('gameCover').replaceWith(img);img.id='gameCover';}else $('gameCover').textContent='ROBLOX';$('gameMeta').innerHTML='';if(Number.isFinite(data.game.playing))$('gameMeta').insertAdjacentHTML('beforeend',`<span>◉ ${data.game.playing.toLocaleString('pt-BR')} jogando</span>`);if(Number.isFinite(data.game.visits))$('gameMeta').insertAdjacentHTML('beforeend',`<span>↗ ${data.game.visits.toLocaleString('pt-BR')} visitas</span>`);$('gameLink').href=data.game.url;$('gameLink').classList.remove('hidden');}else{$('gameName').textContent=data.presenceType===0?'Não está em um jogo agora':'Jogo não identificado';$('gameCreator').textContent=data.presenceType===0?'Quando o Roblox informar um jogo atual, ele aparece aqui.':'A API não retornou detalhes do jogo nesta consulta.';$('gameMeta').textContent='';$('gameLink').classList.add('hidden');const cover=$('gameCover');if(cover.tagName==='IMG'){const div=document.createElement('div');div.id='gameCover';div.className='game-cover placeholder-cover';div.textContent='ROBLOX';cover.replaceWith(div);}else{cover.className='game-cover placeholder-cover';cover.textContent='ROBLOX';}}const grid=$('communityGrid');grid.innerHTML='';if(data.groups.length){for(const g of data.groups){const article=document.createElement('article');article.className='community-card';article.innerHTML=`<div class="community-icon" aria-hidden="true">▧</div><h3>${escapeHTML(g.name)}</h3><p>${escapeHTML(g.description||'Comunidade pública do Roblox.')}</p><div class="community-bottom"><span>${Number.isFinite(g.memberCount)?g.memberCount.toLocaleString('pt-BR')+' membros':'Comunidade pública'}</span><a href="${escapeHTML(g.url)}" target="_blank" rel="noopener noreferrer">Visitar ↗</a></div>`;grid.appendChild(article);}}else{grid.innerHTML='<div class="panel loading-card">A API não encontrou comunidades em que seu cargo apareça como dono. Se você sabe que possui grupos, confira se o Roblox os mostra publicamente como seus.</div>';}$('updatedAt').textContent=`Última consulta: ${new Date(data.updatedAt).toLocaleString('pt-BR')}. Os dados dependem da disponibilidade da API do Roblox.`;}catch(err){$('apiError').textContent=`Não foi possível carregar os dados do Roblox: ${err.message} O restante do site continua funcionando.`;$('apiError').classList.remove('hidden');$('presenceStatus').textContent='Dados indisponíveis';$('presenceText').textContent='Tente atualizar daqui a pouco.';$('heroStatus').textContent='Status do Roblox indisponível';$('gameName').textContent='Não foi possível consultar o jogo';$('gameCreator').textContent='A API pode estar temporariamente indisponível.';$('groupPill').textContent='Indisponível';$('communityGrid').innerHTML='<div class="panel loading-card">Não foi possível carregar as comunidades. Tente novamente.</div>';} finally {
-    if (btn) { btn.disabled = false; btn.textContent = '↻ Atualizar dados'; }
+  if (apiError) {
+    apiError.textContent = '';
+    apiError.classList.add('hidden');
   }
 }
+
+function setApiError(message) {
+  const apiError = $('apiError');
+  if (apiError) {
+    apiError.textContent = message || 'Não foi possível carregar os dados do Roblox.';
+    apiError.classList.remove('hidden');
+  }
+}
+
+async function loadProfile() {
+  const btn = $('refresh');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '↻ Atualizando…';
+  }
+
+  clearApiError();
+
+  try {
+    const response = await fetch('/api/profile', {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    });
+
+    const contentType = (response.headers.get('content-type') || '').toLowerCase();
+    const text = await response.text();
+
+    let data = null;
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
+    }
+
+    if (!response.ok) {
+      const hint = text && text.length < 500 && !text.includes('<html') ? text : `Erro HTTP ${response.status}`;
+      throw new Error(hint || 'Não foi possível carregar os dados do Roblox.');
+    }
+
+    if (!contentType.includes('application/json') && !contentType.includes('+json') && text && text.trim().startsWith('<')) {
+      throw new Error('A rota /api/profile retornou HTML em vez de JSON.');
+    }
+
+    if (!data || typeof data !== 'object') {
+      throw new Error('Resposta da API inválida.');
+    }
+
+    const displayName = data.displayName || data.username || 'Noelzin';
+    const username = data.username || 'PCgamerbom';
+    const avatar = data.avatar || '';
+    const statusText = data.status || 'Offline';
+    const presenceType = Number(data.presenceType || 0);
+    const game = data.game && typeof data.game === 'object' ? data.game : null;
+    const groups = Array.isArray(data.groups) ? data.groups : [];
+    const created = data.created || null;
+
+    setStatusVisual(presenceType);
+
+    const nameTargets = '#username, #displayName, #robloxUsername, .profile-name, .username, [data-profile-name], [data-username]';
+    setTextBySelectors(nameTargets, displayName);
+
+    const statusTargets = '#presenceStatus, #statusText, .presence-text, [data-presence-status]';
+    setTextBySelectors(statusTargets, statusText);
+
+    if (avatar) {
+      setImageBySelectors('#profileAvatar, #avatar, .profile-avatar, [data-avatar]', avatar);
+    }
+
+    if (game && game.name) {
+      setTextBySelectors('#gameName, #currentGame, .game-name, [data-game-name]', game.name);
+    }
+
+    if (game && game.image) {
+      setImageBySelectors('#gameImage, .game-image, [data-game-image]', game.image);
+    }
+
+    if (groups.length > 0) {
+      setTextBySelectors('#groupCount, #communityCount, .group-count, [data-group-count]', String(groups.length));
+    } else {
+      setTextBySelectors('#groupCount, #communityCount, .group-count, [data-group-count]', '0');
+    }
+
+    if (created) {
+      const dateLabel = new Date(created).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+      setTextBySelectors('#createdAt, .created-at, [data-created-at]', dateLabel);
+    }
+
+    const profileLink = data.profileUrl || 'https://www.roblox.com/users/2281180949/profile';
+    const profileLinkEls = document.querySelectorAll('#profileLink, .profile-link, [data-profile-link]');
+    profileLinkEls.forEach((node) => {
+      if (node) node.href = profileLink;
+    });
+
+    const usernameEls = document.querySelectorAll('#username, #robloxUsername, [data-username]');
+    usernameEls.forEach((node) => {
+      if (node && username && !node.dataset.originalUsername) {
+        node.dataset.originalUsername = username;
+      }
+    });
+
+    if (typeof window !== 'undefined' && typeof window.toast === 'function') {
+      window.toast('Dados do Roblox atualizados.');
+    }
+
+    clearApiError();
+  } catch (error) {
+    console.error('loadProfile:', error);
+    setApiError(error?.message || 'Não foi possível carregar os dados do Roblox.');
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '↻ Atualizar dados';
+    }
+  }
+}
+
 $('refresh')?.addEventListener('click', loadProfile);
+
 $('contrastToggle')?.addEventListener('click', () => {
   const on = document.body.classList.toggle('high-contrast');
   $('contrastToggle')?.setAttribute('aria-pressed', String(on));
 });
-$('copyDiscord')?.addEventListener('click', async () => {try{await navigator.clipboard.writeText('noel6956');$('copyHint').textContent='Copiado!';toast('Usuário do Discord copiado: noel6956');}catch{$('copyHint').textContent='Usuário: noel6956';toast('Seu usuário é noel6956');}});function toast(text){const el=$('toast');el.textContent=text;el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2400);}
+
+$('copyDiscord')?.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText('noel6956');
+    if ($('copyHint')) $('copyHint').textContent = 'Copiado!';
+    if (typeof window !== 'undefined' && typeof window.toast === 'function') {
+      window.toast('Usuário do Discord copiado: noel6956');
+    }
+  } catch {
+    if ($('copyHint')) $('copyHint').textContent = 'Não foi possível copiar';
+  }
+});
+
 if ($('year')) $('year').textContent = new Date().getFullYear();
 if ($('refresh')) loadProfile();
