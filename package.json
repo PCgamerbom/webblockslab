@@ -1,0 +1,13 @@
+{
+  "name": "noel-roblox-hub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Site pessoal com status e dados públicos do Roblox (Node.js nativo)",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18"
+  }
+}
