@@ -1,5 +1,7 @@
 const THEME_STORAGE_KEY = 'glass-theme';
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const SOUND_DIRECTORY = './Sounds/';
+const AUDIO_EXTENSIONS = ['.mp3', '.wav', '.m4a', '.aac', '.ogg', '.mp4', '.webm'];
 
 function createCoverSvg(start, end, label) {
   const svg = `
@@ -21,75 +23,28 @@ function createCoverSvg(start, end, label) {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
 }
 
-function arrayBufferToBase64(buffer) {
-  let binary = '';
-  const bytes = new Uint8Array(buffer);
-  const chunkSize = 0x8000;
-
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-  }
-
-  return btoa(binary);
+function makeFallbackPlaylist() {
+  return [
+    {
+      title: 'Glass Horizon',
+      artist: 'NOEL',
+      cover: createCoverSvg('#7dd3fc', '#2563eb', 'GH'),
+      src: './Sounds/track1.mp3',
+    },
+    {
+      title: 'Night Signal',
+      artist: 'NOEL',
+      cover: createCoverSvg('#f9a8d4', '#8b5cf6', 'NS'),
+      src: './Sounds/track2.mp3',
+    },
+    {
+      title: 'Afterglow',
+      artist: 'NOEL',
+      cover: createCoverSvg('#fbbf24', '#fb7185', 'AG'),
+      src: './Sounds/track3.mp3',
+    },
+  ];
 }
-
-function createToneDataUri(freq = 220, duration = 8, amplitude = 0.18) {
-  const sampleRate = 22050;
-  const totalSamples = Math.floor(sampleRate * duration);
-  const buffer = new ArrayBuffer(44 + totalSamples * 2);
-  const view = new DataView(buffer);
-
-  const writeString = (offset, value) => {
-    for (let i = 0; i < value.length; i += 1) {
-      view.setUint8(offset + i, value.charCodeAt(i));
-    }
-  };
-
-  writeString(0, 'RIFF');
-  view.setUint32(4, 36 + totalSamples * 2, true);
-  writeString(8, 'WAVE');
-  writeString(12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, 1, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * 2, true);
-  view.setUint16(32, 2, true);
-  view.setUint16(34, 16, true);
-  writeString(36, 'data');
-  view.setUint32(40, totalSamples * 2, true);
-
-  for (let i = 0; i < totalSamples; i += 1) {
-    const t = i / sampleRate;
-    const envelope = Math.min(1, t / 0.15) * Math.min(1, (duration - t) / 0.5);
-    const sample = Math.sin(2 * Math.PI * freq * t) * amplitude * envelope;
-    const intSample = Math.max(-1, Math.min(1, sample));
-    view.setInt16(44 + i * 2, intSample * 32767, true);
-  }
-
-  return `data:audio/wav;base64,${arrayBufferToBase64(buffer)}`;
-}
-
-const playlist = [
-  {
-    title: 'Glass Horizon',
-    artist: 'NOEL',
-    cover: createCoverSvg('#7dd3fc', '#2563eb', 'GH'),
-    src: createToneDataUri(220, 9, 0.18),
-  },
-  {
-    title: 'Night Signal',
-    artist: 'NOEL',
-    cover: createCoverSvg('#f9a8d4', '#8b5cf6', 'NS'),
-    src: createToneDataUri(196, 9, 0.15),
-  },
-  {
-    title: 'Afterglow',
-    artist: 'NOEL',
-    cover: createCoverSvg('#fbbf24', '#fb7185', 'AG'),
-    src: createToneDataUri(262, 9, 0.14),
-  },
-];
 
 const state = {
   theme: 'day',
@@ -99,6 +54,7 @@ const state = {
   repeatMode: 'off',
   volume: 0.7,
   playlistOpen: false,
+  playlist: makeFallbackPlaylist(),
 };
 
 const audio = new Audio();
@@ -145,6 +101,60 @@ function formatTime(seconds) {
   const mins = Math.floor(seconds / 60);
   const secs = Math.floor(seconds % 60);
   return `${mins}:${String(secs).padStart(2, '0')}`;
+}
+
+function getAudioExtension(path) {
+  const normalized = String(path).toLowerCase();
+  return AUDIO_EXTENSIONS.some((ext) => normalized.endsWith(ext));
+}
+
+function normalizeTrackName(fileName) {
+  return fileName
+    .replace(/\.[^/.]+$/, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function addSourceSong(filePath) {
+  const cleanFileName = filePath.split('/').pop() || 'track';
+  const label = normalizeTrackName(cleanFileName);
+  return {
+    title: label || 'Untitled Track',
+    artist: 'NOEL',
+    cover: createCoverSvg('#7dd3fc', '#2563eb', label.slice(0, 2).toUpperCase() || 'TR'),
+    src: filePath,
+  };
+}
+
+function parseDirectoryListing(directoryHtml) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(directoryHtml, 'text/html');
+  const anchors = [...doc.querySelectorAll('a[href]')];
+  const items = anchors
+    .map((node) => node.getAttribute('href'))
+    .filter(Boolean)
+    .map((href) => decodeURIComponent(href).replace(/^\//, '').replace(/^\.\//, ''))
+    .filter((value) => getAudioExtension(value))
+    .map((value) => value.startsWith('Sounds') || value.startsWith('./Sounds') ? value : `./Sounds/${value}`)
+    .filter((value, index, arr) => arr.indexOf(value) === index);
+
+  return items;
+}
+
+async function loadSoundLibrary() {
+  try {
+    const response = await fetch(SOUND_DIRECTORY, { cache: 'no-store' });
+    if (!response.ok) return null;
+
+    const html = await response.text();
+    const files = parseDirectoryListing(html);
+    if (!files.length) return null;
+
+    return files.map((path) => addSourceSong(path));
+  } catch (error) {
+    return null;
+  }
 }
 
 function setThemeButtonLabel() {
@@ -207,7 +217,7 @@ function setShuffleButtonState() {
 }
 
 function renderPlaylist() {
-  elements.playlistList.innerHTML = playlist
+  elements.playlistList.innerHTML = state.playlist
     .map((track, index) => {
       const activeClass = index === state.currentTrack ? 'active' : '';
       return `
@@ -233,10 +243,12 @@ function renderPlaylist() {
 }
 
 function loadTrack(index) {
-  const safeIndex = (index + playlist.length) % playlist.length;
+  if (!state.playlist.length) return;
+
+  const safeIndex = (index + state.playlist.length) % state.playlist.length;
   state.currentTrack = safeIndex;
 
-  const track = playlist[safeIndex];
+  const track = state.playlist[safeIndex];
   elements.trackTitle.textContent = track.title;
   elements.trackArtist.textContent = track.artist;
   elements.coverArt.src = track.cover;
@@ -265,7 +277,7 @@ function playTrack(index) {
 
 function nextTrack() {
   if (state.shuffle) {
-    const randomIndex = Math.floor(Math.random() * playlist.length);
+    const randomIndex = Math.floor(Math.random() * state.playlist.length);
     playTrack(randomIndex);
     return;
   }
@@ -278,7 +290,7 @@ function previousTrack() {
 }
 
 function togglePlayback() {
-  if (!playlist.length) {
+  if (!state.playlist.length) {
     showToast('Nenhuma faixa disponível.');
     return;
   }
@@ -318,7 +330,7 @@ function handleEnded() {
   }
 
   if (state.shuffle) {
-    const nextIndex = Math.floor(Math.random() * playlist.length);
+    const nextIndex = Math.floor(Math.random() * state.playlist.length);
     playTrack(nextIndex);
     return;
   }
@@ -600,17 +612,30 @@ function bindSky() {
   requestAnimationFrame(drawSky);
 }
 
+async function initializePlaylist() {
+  const filesFromFolder = await loadSoundLibrary();
+
+  if (filesFromFolder && filesFromFolder.length) {
+    state.playlist = filesFromFolder;
+  } else {
+    state.playlist = makeFallbackPlaylist();
+    showToast('Pasta Sounds vazia. Coloque seus arquivos MP3/WAV/MP4 aqui.');
+  }
+
+  renderPlaylist();
+  loadTrack(0);
+}
+
 function init() {
   initTheme();
   bindUI();
   bindAudio();
-  renderPlaylist();
   updateVolumeStyles();
   setRepeatButtonState();
   setShuffleButtonState();
   updatePlayButton();
   updateVolumeIcon();
-  loadTrack(state.currentTrack);
+  initializePlaylist();
   bindSky();
 
   if (prefersReducedMotion) {
