@@ -1,511 +1,622 @@
-const THEME_STORAGE_KEY = 'noel-theme-v1';
+const THEME_STORAGE_KEY = 'glass-theme';
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const themePresets = {
-  violet: {
-    accent: '#8b5cf6',
-    accentTwo: '#7dd3fc',
-    background: '#0a0c12',
-    surface: '#121a2b',
-    text: '#f8fafc',
-    border: '#2b3648',
+function createCoverSvg(start, end, label) {
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+      <defs>
+        <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="${start}"/>
+          <stop offset="100%" stop-color="${end}"/>
+        </linearGradient>
+      </defs>
+      <rect width="300" height="300" rx="36" fill="url(#g)"/>
+      <circle cx="76" cy="82" r="58" fill="rgba(255,255,255,0.12)"/>
+      <circle cx="226" cy="220" r="70" fill="rgba(255,255,255,0.08)"/>
+      <path d="M58 206c40-42 102-54 166-36" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="10" stroke-linecap="round"/>
+      <text x="150" y="162" text-anchor="middle" font-size="32" font-weight="700" font-family="Arial, sans-serif" fill="white" letter-spacing="4">${label}</text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+}
+
+function arrayBufferToBase64(buffer) {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+
+  return btoa(binary);
+}
+
+function createToneDataUri(freq = 220, duration = 8, amplitude = 0.18) {
+  const sampleRate = 22050;
+  const totalSamples = Math.floor(sampleRate * duration);
+  const buffer = new ArrayBuffer(44 + totalSamples * 2);
+  const view = new DataView(buffer);
+
+  const writeString = (offset, value) => {
+    for (let i = 0; i < value.length; i += 1) {
+      view.setUint8(offset + i, value.charCodeAt(i));
+    }
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + totalSamples * 2, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  writeString(36, 'data');
+  view.setUint32(40, totalSamples * 2, true);
+
+  for (let i = 0; i < totalSamples; i += 1) {
+    const t = i / sampleRate;
+    const envelope = Math.min(1, t / 0.15) * Math.min(1, (duration - t) / 0.5);
+    const sample = Math.sin(2 * Math.PI * freq * t) * amplitude * envelope;
+    const intSample = Math.max(-1, Math.min(1, sample));
+    view.setInt16(44 + i * 2, intSample * 32767, true);
+  }
+
+  return `data:audio/wav;base64,${arrayBufferToBase64(buffer)}`;
+}
+
+const playlist = [
+  {
+    title: 'Glass Horizon',
+    artist: 'NOEL',
+    cover: createCoverSvg('#7dd3fc', '#2563eb', 'GH'),
+    src: createToneDataUri(220, 9, 0.18),
   },
-  cyber: {
-    accent: '#4cc9f0',
-    accentTwo: '#7c3aed',
-    background: '#060d17',
-    surface: '#0e1d2a',
-    text: '#ecf6ff',
-    border: '#20344a',
+  {
+    title: 'Night Signal',
+    artist: 'NOEL',
+    cover: createCoverSvg('#f9a8d4', '#8b5cf6', 'NS'),
+    src: createToneDataUri(196, 9, 0.15),
   },
-  red: {
-    accent: '#f43f5e',
-    accentTwo: '#fb7185',
-    background: '#140b0f',
-    surface: '#1d1117',
-    text: '#fff1f2',
-    border: '#4a2733',
+  {
+    title: 'Afterglow',
+    artist: 'NOEL',
+    cover: createCoverSvg('#fbbf24', '#fb7185', 'AG'),
+    src: createToneDataUri(262, 9, 0.14),
   },
-  green: {
-    accent: '#34d399',
-    accentTwo: '#a7f3d0',
-    background: '#071312',
-    surface: '#0d1b1b',
-    text: '#ecfdf5',
-    border: '#1d3b37',
-  },
-  rose: {
-    accent: '#f472b6',
-    accentTwo: '#fb7185',
-    background: '#160d15',
-    surface: '#1d121b',
-    text: '#fff1f7',
-    border: '#422a3a',
-  },
-  gold: {
-    accent: '#fbbf24',
-    accentTwo: '#f59e0b',
-    background: '#120d09',
-    surface: '#1d170f',
-    text: '#fff8e8',
-    border: '#3d2f1b',
-  },
-  mono: {
-    accent: '#e5e7eb',
-    accentTwo: '#a1a1aa',
-    background: '#0a0a0a',
-    surface: '#171717',
-    text: '#f5f5f5',
-    border: '#2a2a2a',
-  },
+];
+
+const state = {
+  theme: 'day',
+  currentTrack: 0,
+  isPlaying: false,
+  shuffle: false,
+  repeatMode: 'off',
+  volume: 0.7,
+  playlistOpen: false,
 };
 
-const $ = (selector) => document.querySelector(selector);
-const $$ = (selector) => Array.from(document.querySelectorAll(selector));
+const audio = new Audio();
+audio.volume = state.volume;
+audio.preload = 'auto';
+
+const elements = {
+  body: document.body,
+  themeToggle: document.getElementById('themeToggleButton'),
+  themeLabel: document.getElementById('themeLabel'),
+  themeIcon: document.getElementById('themeIcon'),
+  copyBtn: document.getElementById('copyDiscordBtn'),
+  copyToast: document.getElementById('copyToast'),
+  musicPlayer: document.getElementById('musicPlayer'),
+  trackTitle: document.getElementById('trackTitle'),
+  trackArtist: document.getElementById('trackArtist'),
+  coverArt: document.getElementById('coverArt'),
+  playBtn: document.getElementById('playBtn'),
+  playIcon: document.getElementById('playIcon'),
+  prevBtn: document.getElementById('prevBtn'),
+  nextBtn: document.getElementById('nextBtn'),
+  shuffleBtn: document.getElementById('shuffleBtn'),
+  repeatBtn: document.getElementById('repeatBtn'),
+  progressRange: document.getElementById('progressRange'),
+  volumeRange: document.getElementById('volumeRange'),
+  currentTime: document.getElementById('currentTime'),
+  totalTime: document.getElementById('totalTime'),
+  playlistToggle: document.getElementById('playlistToggle'),
+  playlistList: document.getElementById('playlistList'),
+  muteBtn: document.getElementById('muteBtn'),
+  volumeIcon: document.getElementById('volumeIcon'),
+  toast: document.getElementById('toast'),
+};
 
 function showToast(message) {
-  const toast = $('#toast');
-  if (!toast) return;
-  toast.textContent = message;
-  toast.classList.add('visible');
-  window.clearTimeout(showToast.timer);
-  showToast.timer = window.setTimeout(() => toast.classList.remove('visible'), 2200);
+  elements.toast.textContent = message;
+  elements.toast.classList.add('visible');
+  clearTimeout(showToast.timer);
+  showToast.timer = setTimeout(() => elements.toast.classList.remove('visible'), 2200);
 }
 
-function setStatusVisual(type) {
-  const online = Number(type) === 1 || Number(type) === 2 || Number(type) === 3;
-  const indicator = $('#presenceDot');
-  const badge = $('#presenceBadge');
-  if (indicator) indicator.classList.toggle('online', online);
-  if (badge) badge.classList.toggle('offline', !online);
+function formatTime(seconds) {
+  if (!Number.isFinite(seconds) || seconds < 0) return '0:00';
+  const mins = Math.floor(seconds / 60);
+  const secs = Math.floor(seconds % 60);
+  return `${mins}:${String(secs).padStart(2, '0')}`;
 }
 
-function setApiError(message) {
-  const node = $('#apiError');
-  if (!node) return;
-  node.textContent = message || 'Não foi possível carregar os dados do Roblox.';
-  node.classList.remove('hidden');
+function setThemeButtonLabel() {
+  elements.themeLabel.textContent = state.theme === 'night' ? 'Modo Dia' : 'Modo Noite';
 }
 
-function clearApiError() {
-  const node = $('#apiError');
-  if (!node) return;
-  node.textContent = '';
-  node.classList.add('hidden');
+function applyTheme(themeName) {
+  state.theme = themeName;
+  elements.body.setAttribute('data-theme', themeName);
+  setThemeButtonLabel();
+  localStorage.setItem(THEME_STORAGE_KEY, themeName);
+
+  const skyGoal = themeName === 'night' ? 1 : 0;
+  skyState.target = skyGoal;
 }
 
-function dataToText(value, fallback = '—') {
-  if (value === undefined || value === null || value === '') return fallback;
-  return String(value);
+function toggleTheme() {
+  const nextTheme = state.theme === 'day' ? 'night' : 'day';
+  applyTheme(nextTheme);
 }
 
-function renderGame(game) {
-  const nameNode = $('#gameName');
-  const creatorNode = $('#gameCreator');
-  const playersNode = $('#gamePlayers');
-  const visitsNode = $('#gameVisits');
-  const imageNode = $('#gameImage');
-  const gameLink = $('#gameLink');
-  const meta = $('#gameMeta');
-
-  if (!game) {
-    if (nameNode) nameNode.textContent = 'Nenhum jogo em andamento';
-    if (creatorNode) creatorNode.textContent = 'Aguardando dados do Roblox…';
-    if (playersNode) playersNode.textContent = '—';
-    if (visitsNode) visitsNode.textContent = '—';
-    if (imageNode) imageNode.src = '';
-    if (gameLink) gameLink.href = '#';
-    if (meta) meta.style.opacity = '0.8';
-    return;
-  }
-
-  if (nameNode) nameNode.textContent = game.name || 'Jogo do Roblox';
-  if (creatorNode) creatorNode.textContent = game.creatorName ? `Criador: ${game.creatorName}` : 'Criador indisponível';
-  if (playersNode) playersNode.textContent = Number.isFinite(Number(game.playing)) ? `${Number(game.playing).toLocaleString('pt-BR')} jogadores` : 'Jogadores indisponíveis';
-  if (visitsNode) visitsNode.textContent = Number.isFinite(Number(game.visits)) ? `${Number(game.visits).toLocaleString('pt-BR')} visitas` : 'Visitas indisponíveis';
-  if (imageNode) imageNode.src = game.image || '';
-  if (gameLink) gameLink.href = game.url || '#';
-  if (meta) meta.style.opacity = '1';
+function updateProgressStyles() {
+  const value = Number(elements.progressRange.value || 0);
+  const min = Number(elements.progressRange.min || 0);
+  const max = Number(elements.progressRange.max || 100);
+  const percentage = ((value - min) / (max - min)) * 100;
+  elements.progressRange.style.setProperty('--range-progress', `${percentage}%`);
 }
 
-function renderGroups(groups) {
-  const list = $('#groupsList');
-  const count = $('#groupCount');
-  if (count) count.textContent = String(groups.length || 0);
+function updateVolumeStyles() {
+  const value = Number(elements.volumeRange.value || 0.7);
+  const percentage = value * 100;
+  elements.volumeRange.style.setProperty('--range-progress', `${percentage}%`);
+}
 
-  if (!list) return;
+function updatePlayButton() {
+  const isPaused = audio.paused;
+  elements.playIcon.innerHTML = isPaused
+    ? '<path d="M8 5v14l11-7-11-7z"></path>'
+    : '<path d="M8 5h3v14H8zm5 0h3v14h-3z"></path>';
+  elements.playBtn.setAttribute('aria-label', isPaused ? 'Reproduzir' : 'Pausar');
+}
 
-  if (!groups.length) {
-    list.innerHTML = '<article class="community-card"><p>Não foi possível localizar comunidades públicas com cargo de dono no momento.</p></article>';
-    return;
-  }
+function updateVolumeIcon() {
+  const isMuted = audio.volume === 0;
+  const path = isMuted
+    ? '<path d="M11 5L6 9H3v6h3l5 4V5z"></path><path d="M15 9l5 6"></path><path d="M20 9l-5 6"></path>'
+    : '<path d="M11 5L6 9H3v6h3l5 4V5z"></path><path d="M16 9a4 4 0 0 1 0 6"></path><path d="M18.5 6.5a7 7 0 0 1 0 11"></path>';
+  elements.volumeIcon.innerHTML = path;
+}
 
-  list.innerHTML = groups
-    .filter((group) => group && typeof group === 'object')
-    .map((group) => {
-      const name = dataToText(group.name, 'Grupo do Roblox');
-      const description = dataToText(group.description, 'Comunidade pública do Roblox.');
-      const role = dataToText(group.role, 'Dono');
-      const memberCount = Number.isFinite(Number(group.memberCount)) ? Number(group.memberCount) : null;
-      const icon = group.icon || 'https://tr.rbxcdn.com/';
-      const link = group.url || 'https://www.roblox.com/communities';
+function setRepeatButtonState() {
+  const hasRepeat = state.repeatMode !== 'off';
+  elements.repeatBtn.classList.toggle('active', hasRepeat);
+  elements.repeatBtn.classList.toggle('repeat-mode-active', hasRepeat);
+}
 
+function setShuffleButtonState() {
+  elements.shuffleBtn.classList.toggle('active', state.shuffle);
+}
+
+function renderPlaylist() {
+  elements.playlistList.innerHTML = playlist
+    .map((track, index) => {
+      const activeClass = index === state.currentTrack ? 'active' : '';
       return `
-        <article class="community-card reveal">
-          <div class="community-card-header">
-            <img class="community-icon" src="${icon}" alt="Ícone do grupo ${name}" />
-            <div>
-              <h3>${name}</h3>
-              <div class="community-role">Cargo: ${role}</div>
-            </div>
-          </div>
-          <div class="community-meta">${memberCount ? `${memberCount.toLocaleString('pt-BR')} membros` : 'Membros indisponíveis'}</div>
-          <p>${description}</p>
-          <a href="${link}" target="_blank" rel="noopener noreferrer">Abrir grupo</a>
-        </article>
+        <button class="playlist-item ${activeClass}" type="button" data-index="${index}" aria-label="Reproduzir ${track.title}">
+          <span class="playlist-index">${index + 1}</span>
+          <img class="playlist-art" src="${track.cover}" alt="Capa da faixa ${track.title}" />
+          <span class="playlist-copy">
+            <span class="playlist-title">${track.title}</span>
+            <span class="playlist-artist">${track.artist}</span>
+          </span>
+        </button>
       `;
-    }).join('');
-}
+    })
+    .join('');
 
-function renderProfile(profile) {
-  if (!profile || typeof profile !== 'object') return;
-
-  const displayName = profile.displayName || profile.username || 'Noelzin';
-  const username = profile.username || 'PCgamerbom';
-  const avatar = profile.avatar || 'https://tr.rbxcdn.com/';
-  const status = profile.status || 'Offline';
-  const presenceType = Number(profile.presenceType || 0);
-  const created = profile.created || null;
-
-  const displayNodes = $$('[data-display-name], #displayName, #displayNameLarge');
-  displayNodes.forEach((node) => {
-    if (node) node.textContent = displayName;
-  });
-
-  const usernameNodes = $$('[data-username], #username, #robloxUser');
-  usernameNodes.forEach((node) => {
-    if (node) node.textContent = `@${username}`;
-  });
-
-  $$('[data-avatar], #profileAvatar, #profileAvatarLarge').forEach((node) => {
-    if (node) node.src = avatar;
-  });
-
-  const statusNodes = $$('[data-status], #presenceStatus, #statusTitle');
-  statusNodes.forEach((node) => {
-    if (node) node.textContent = status;
-  });
-
-  const badge = $('#presenceBadge');
-  if (badge) {
-    badge.textContent = status;
-    badge.classList.toggle('offline', status === 'Offline');
-  }
-
-  const presenceValue = $('#presenceValue');
-  if (presenceValue) presenceValue.textContent = status;
-
-  setStatusVisual(presenceType);
-
-  const linkNode = $('#profileLink');
-  if (linkNode) linkNode.href = profile.profileUrl || 'https://www.roblox.com/users/2281180949/profile';
-
-  const createdNode = $('#profileCreated');
-  if (createdNode) {
-    if (created) {
-      const date = new Date(created);
-      const label = Number.isNaN(date.getTime()) ? 'Data indisponível' : date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
-      createdNode.textContent = `Conta criada em ${label}`;
-    } else {
-      createdNode.textContent = 'Conta criada em —';
-    }
-  }
-
-  const lastUpdated = $('#lastUpdated');
-  if (lastUpdated) {
-    lastUpdated.textContent = profile.updatedAt ? new Date(profile.updatedAt).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
-  }
-
-  renderGame(profile.game || null);
-  renderGroups(Array.isArray(profile.groups) ? profile.groups : []);
-}
-
-async function loadProfile() {
-  const btn = $('#refresh');
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = '↻ Atualizando…';
-  }
-
-  clearApiError();
-
-  try {
-    const response = await fetch('/api/profile', {
-      cache: 'no-store',
-      headers: { Accept: 'application/json' },
+  elements.playlistList.querySelectorAll('.playlist-item').forEach((item) => {
+    item.addEventListener('click', () => {
+      const nextIndex = Number(item.dataset.index);
+      if (Number.isNaN(nextIndex)) return;
+      playTrack(nextIndex);
     });
-
-    const contentType = (response.headers.get('content-type') || '').toLowerCase();
-    const text = await response.text();
-
-    let data = null;
-    if (text) {
-      try {
-        data = JSON.parse(text);
-      } catch {
-        data = null;
-      }
-    }
-
-    if (!response.ok) {
-      const hint = text && text.length < 500 && !text.includes('<html') ? text : `Erro HTTP ${response.status}`;
-      throw new Error(hint || 'Não foi possível carregar os dados do Roblox.');
-    }
-
-    if (!contentType.includes('application/json') && text && text.trim().startsWith('<')) {
-      throw new Error('A rota /api/profile retornou HTML em vez de JSON.');
-    }
-
-    if (!data || typeof data !== 'object') {
-      throw new Error('Resposta da API inválida.');
-    }
-
-    renderProfile(data);
-    clearApiError();
-  } catch (error) {
-    console.error('loadProfile:', error);
-    setApiError(error?.message || 'Não foi possível carregar os dados do Roblox.');
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = '↻ Atualizar dados';
-    }
-  }
+  });
 }
 
-function applyTheme(theme = {}) {
-  const root = document.documentElement;
-  root.style.setProperty('--accent', theme.accent || '#8b5cf6');
-  root.style.setProperty('--accent-2', theme.accentTwo || '#7dd3fc');
-  root.style.setProperty('--background', theme.background || '#0a0c12');
-  root.style.setProperty('--surface', theme.surface || '#121a2b');
-  root.style.setProperty('--text', theme.text || '#f8fafc');
-  root.style.setProperty('--border', theme.border || '#2b3648');
+function loadTrack(index) {
+  const safeIndex = (index + playlist.length) % playlist.length;
+  state.currentTrack = safeIndex;
 
-  const accentInput = $('#accentInput');
-  const accentTwoInput = $('#accentTwoInput');
-  const backgroundInput = $('#backgroundInput');
-  const surfaceInput = $('#surfaceInput');
-  const textInput = $('#textInput');
-  const borderInput = $('#borderInput');
+  const track = playlist[safeIndex];
+  elements.trackTitle.textContent = track.title;
+  elements.trackArtist.textContent = track.artist;
+  elements.coverArt.src = track.cover;
+  audio.src = track.src;
+  audio.load();
 
-  if (accentInput) accentInput.value = theme.accent || '#8b5cf6';
-  if (accentTwoInput) accentTwoInput.value = theme.accentTwo || '#7dd3fc';
-  if (backgroundInput) backgroundInput.value = theme.background || '#0a0c12';
-  if (surfaceInput) surfaceInput.value = theme.surface || '#121a2b';
-  if (textInput) textInput.value = theme.text || '#f8fafc';
-  if (borderInput) borderInput.value = theme.border || '#2b3648';
-
-  localStorage.setItem(THEME_STORAGE_KEY, JSON.stringify(theme));
+  elements.progressRange.value = 0;
+  elements.currentTime.textContent = '0:00';
+  elements.totalTime.textContent = '0:00';
+  updateProgressStyles();
+  renderPlaylist();
 }
 
-function loadTheme() {
-  const saved = localStorage.getItem(THEME_STORAGE_KEY);
-  if (!saved) {
-    applyTheme(themePresets.violet);
+function playTrack(index) {
+  loadTrack(index);
+
+  audio.play().then(() => {
+    state.isPlaying = true;
+    updatePlayButton();
+  }).catch(() => {
+    state.isPlaying = false;
+    updatePlayButton();
+    showToast('Clique novamente para iniciar a reprodução.');
+  });
+}
+
+function nextTrack() {
+  if (state.shuffle) {
+    const randomIndex = Math.floor(Math.random() * playlist.length);
+    playTrack(randomIndex);
     return;
   }
 
-  try {
-    const parsed = JSON.parse(saved);
-    applyTheme({ ...themePresets.violet, ...parsed });
-  } catch {
-    applyTheme(themePresets.violet);
-  }
+  playTrack(state.currentTrack + 1);
 }
 
-function initThemePanel() {
-  const panel = $('#themePanel');
-  const toggle = $('#themeToggle');
-  const closeButton = $('#closeThemePanel');
-  const applyButton = $('#applyThemeButton');
-  const resetButton = $('#resetTheme');
-
-  if (!panel || !toggle) return;
-
-  const openPanel = () => {
-    panel.classList.add('open');
-    panel.setAttribute('aria-hidden', 'false');
-    toggle.setAttribute('aria-expanded', 'true');
-  };
-
-  const closePanel = () => {
-    panel.classList.remove('open');
-    panel.setAttribute('aria-hidden', 'true');
-    toggle.setAttribute('aria-expanded', 'false');
-  };
-
-  toggle.addEventListener('click', () => {
-    const isOpen = panel.classList.contains('open');
-    if (isOpen) closePanel(); else openPanel();
-  });
-
-  if (closeButton) closeButton.addEventListener('click', closePanel);
-
-  $$('.preset-button').forEach((button) => {
-    button.addEventListener('click', () => {
-      $$('.preset-button').forEach((btn) => btn.classList.toggle('active', btn === button));
-      const key = button.dataset.theme;
-      if (key && themePresets[key]) {
-        applyTheme(themePresets[key]);
-      }
-    });
-  });
-
-  const readCustomTheme = () => ({
-    accent: $('#accentInput')?.value || '#8b5cf6',
-    accentTwo: $('#accentTwoInput')?.value || '#7dd3fc',
-    background: $('#backgroundInput')?.value || '#0a0c12',
-    surface: $('#surfaceInput')?.value || '#121a2b',
-    text: $('#textInput')?.value || '#f8fafc',
-    border: $('#borderInput')?.value || '#2b3648',
-  });
-
-  if (applyButton) {
-    applyButton.addEventListener('click', () => {
-      applyTheme(readCustomTheme());
-      showToast('Tema aplicado.');
-      closePanel();
-    });
-  }
-
-  if (resetButton) {
-    resetButton.addEventListener('click', () => {
-      applyTheme(themePresets.violet);
-      $$('.preset-button').forEach((button) => button.classList.toggle('active', button.dataset.theme === 'violet'));
-      showToast('Tema padrão restaurado.');
-      closePanel();
-    });
-  }
+function previousTrack() {
+  playTrack(state.currentTrack - 1);
 }
 
-function initNav() {
-  const toggle = $('#navToggle');
-  const nav = $('#siteNav');
-  if (!toggle || !nav) return;
-
-  toggle.addEventListener('click', () => {
-    const isOpen = nav.classList.toggle('open');
-    toggle.setAttribute('aria-expanded', String(isOpen));
-  });
-
-  nav.querySelectorAll('a').forEach((link) => {
-    link.addEventListener('click', () => {
-      nav.classList.remove('open');
-      toggle.setAttribute('aria-expanded', 'false');
-    });
-  });
-}
-
-function initReveal() {
-  const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (prefersReducedMotion) {
-    document.querySelectorAll('.reveal').forEach((node) => node.classList.add('visible'));
+function togglePlayback() {
+  if (!playlist.length) {
+    showToast('Nenhuma faixa disponível.');
     return;
   }
 
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
+  if (audio.paused) {
+    audio.play().then(() => {
+      state.isPlaying = true;
+      updatePlayButton();
+    }).catch(() => {
+      showToast('Não foi possível iniciar a reprodução.');
     });
-  }, { threshold: 0.12 });
-
-  document.querySelectorAll('.reveal').forEach((node) => observer.observe(node));
+  } else {
+    audio.pause();
+    state.isPlaying = false;
+    updatePlayButton();
+  }
 }
 
-function initCursor() {
-  if (window.matchMedia('(pointer: coarse)').matches) return;
-
-  const cursorOuter = document.querySelector('.cursor--outer');
-  const cursorInner = document.querySelector('.cursor--inner');
-  if (!cursorOuter || !cursorInner) return;
-
-  const move = (event) => {
-    cursorOuter.style.left = `${event.clientX}px`;
-    cursorOuter.style.top = `${event.clientY}px`;
-    cursorInner.style.left = `${event.clientX}px`;
-    cursorInner.style.top = `${event.clientY}px`;
-  };
-
-  window.addEventListener('pointermove', move);
-
-  const hoverTargets = 'a, button, input, .community-card, .link-card, .profile-card, .game-card';
-  document.querySelectorAll(hoverTargets).forEach((node) => {
-    node.addEventListener('mouseenter', () => {
-      cursorOuter.classList.add('hover');
-      cursorInner.classList.add('active');
-    });
-    node.addEventListener('mouseleave', () => {
-      cursorOuter.classList.remove('hover');
-      cursorInner.classList.remove('active');
-    });
-  });
-
-  document.addEventListener('pointerdown', () => cursorOuter.classList.add('active'));
-  document.addEventListener('pointerup', () => cursorOuter.classList.remove('active'));
+function cycleRepeatMode() {
+  const modes = ['off', 'track', 'list'];
+  const currentIndex = modes.indexOf(state.repeatMode);
+  state.repeatMode = modes[(currentIndex + 1) % modes.length];
+  setRepeatButtonState();
+  showToast(state.repeatMode === 'off' ? 'Repete desligado' : state.repeatMode === 'track' ? 'Repetição de faixa' : 'Repetição da lista');
 }
 
-function initYear() {
-  const year = $('#year');
-  if (year) year.textContent = new Date().getFullYear();
+function handleEnded() {
+  if (state.repeatMode === 'track') {
+    audio.currentTime = 0;
+    audio.play();
+    return;
+  }
+
+  if (state.repeatMode === 'list') {
+    nextTrack();
+    return;
+  }
+
+  if (state.shuffle) {
+    const nextIndex = Math.floor(Math.random() * playlist.length);
+    playTrack(nextIndex);
+    return;
+  }
+
+  nextTrack();
 }
 
-function initCopyDiscord() {
-  const button = $('#copyDiscord');
-  if (!button) return;
+function togglePlaylist() {
+  state.playlistOpen = !state.playlistOpen;
+  elements.musicPlayer.classList.toggle('open', state.playlistOpen);
+  elements.playlistToggle.setAttribute('aria-expanded', String(state.playlistOpen));
+}
 
-  button.addEventListener('click', async () => {
+function initTheme() {
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  const initialTheme = savedTheme === 'night' || savedTheme === 'day' ? savedTheme : 'day';
+  applyTheme(initialTheme);
+}
+
+function bindUI() {
+  elements.themeToggle.addEventListener('click', toggleTheme);
+
+  elements.copyBtn.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText('noel6956');
-      showToast('Usuário do Discord copiado: noel6956');
+      elements.copyToast.classList.add('show');
+      setTimeout(() => elements.copyToast.classList.remove('show'), 1800);
     } catch {
       showToast('Não foi possível copiar o Discord.');
     }
   });
+
+  elements.playBtn.addEventListener('click', togglePlayback);
+  elements.prevBtn.addEventListener('click', previousTrack);
+  elements.nextBtn.addEventListener('click', nextTrack);
+  elements.shuffleBtn.addEventListener('click', () => {
+    state.shuffle = !state.shuffle;
+    setShuffleButtonState();
+    showToast(state.shuffle ? 'Aleatório ativado' : 'Aleatório desativado');
+  });
+  elements.repeatBtn.addEventListener('click', cycleRepeatMode);
+  elements.playlistToggle.addEventListener('click', togglePlaylist);
+
+  elements.progressRange.addEventListener('input', (event) => {
+    if (!audio.duration) return;
+    const value = Number(event.target.value);
+    const progress = (value / 100) * audio.duration;
+    audio.currentTime = progress;
+    elements.currentTime.textContent = formatTime(progress);
+    updateProgressStyles();
+  });
+
+  elements.volumeRange.addEventListener('input', (event) => {
+    state.volume = Number(event.target.value);
+    audio.volume = state.volume;
+    updateVolumeStyles();
+    updateVolumeIcon();
+  });
+
+  elements.muteBtn.addEventListener('click', () => {
+    if (audio.volume > 0) {
+      audio.volume = 0;
+      elements.volumeRange.value = '0';
+    } else {
+      audio.volume = state.volume || 0.7;
+      elements.volumeRange.value = String(audio.volume);
+    }
+    updateVolumeStyles();
+    updateVolumeIcon();
+  });
+
+  window.addEventListener('pointermove', (event) => {
+    const x = (event.clientX / window.innerWidth) * 100;
+    const y = (event.clientY / window.innerHeight) * 100;
+    document.documentElement.style.setProperty('--mx', `${x}%`);
+    document.documentElement.style.setProperty('--my', `${y}%`);
+  });
+}
+
+function bindAudio() {
+  audio.addEventListener('loadedmetadata', () => {
+    elements.totalTime.textContent = formatTime(audio.duration || 0);
+    elements.progressRange.value = 0;
+    updateProgressStyles();
+  });
+
+  audio.addEventListener('timeupdate', () => {
+    if (!audio.duration) return;
+    const percent = (audio.currentTime / audio.duration) * 100;
+    elements.progressRange.value = percent;
+    elements.currentTime.textContent = formatTime(audio.currentTime);
+    updateProgressStyles();
+  });
+
+  audio.addEventListener('ended', handleEnded);
+  audio.addEventListener('play', () => {
+    state.isPlaying = true;
+    updatePlayButton();
+  });
+
+  audio.addEventListener('pause', () => {
+    state.isPlaying = false;
+    updatePlayButton();
+  });
+
+  audio.addEventListener('volumechange', updateVolumeIcon);
+}
+
+const skyState = {
+  target: 0,
+  progress: 0,
+  stars: [],
+  clouds: [],
+  pointerX: 0,
+  pointerY: 0,
+  width: 0,
+  height: 0,
+};
+
+function createStars(count) {
+  const isMobile = window.matchMedia('(max-width: 640px)').matches;
+  const safeCount = isMobile ? 90 : count;
+
+  skyState.stars = Array.from({ length: safeCount }, () => ({
+    x: Math.random(),
+    y: Math.random(),
+    r: Math.random() * 2.1 + 0.8,
+    alpha: Math.random() * 0.75 + 0.15,
+    twinkle: Math.random() * Math.PI * 2,
+    drift: Math.random() * 0.5 + 0.25,
+  }));
+}
+
+function createClouds() {
+  const isMobile = window.matchMedia('(max-width: 640px)').matches;
+  const count = isMobile ? 4 : 6;
+  skyState.clouds = Array.from({ length: count }, () => ({
+    x: Math.random(),
+    y: Math.random() * 0.6 + 0.08,
+    scale: Math.random() * 1.2 + 0.7,
+    speed: Math.random() * 0.1 + 0.03,
+    opacity: Math.random() * 0.12 + 0.08,
+  }));
+}
+
+function resizeSky() {
+  const canvas = document.getElementById('skyCanvas');
+  const ratio = window.devicePixelRatio || 1;
+  skyState.width = window.innerWidth;
+  skyState.height = window.innerHeight;
+  canvas.width = skyState.width * ratio;
+  canvas.height = skyState.height * ratio;
+  canvas.style.width = `${skyState.width}px`;
+  canvas.style.height = `${skyState.height}px`;
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  createStars(220);
+  createClouds();
+}
+
+function drawCloud(x, y, scale, opacity, ctx) {
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(scale, scale);
+  ctx.beginPath();
+  ctx.arc(0, 0, 22, Math.PI * 0.5, Math.PI * 1.5);
+  ctx.arc(18, -10, 18, Math.PI, Math.PI * 2);
+  ctx.arc(44, -8, 22, Math.PI, Math.PI * 2);
+  ctx.arc(68, 0, 22, Math.PI * 1.5, Math.PI * 0.5);
+  ctx.closePath();
+  ctx.fillStyle = `rgba(255,255,255,${opacity})`;
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawSky() {
+  const canvas = document.getElementById('skyCanvas');
+  const ctx = canvas.getContext('2d');
+
+  skyState.progress += (skyState.target - skyState.progress) * 0.04;
+
+  const dayTop = [126, 196, 255];
+  const dayBottom = [240, 248, 255];
+  const nightTop = [5, 10, 30];
+  const nightBottom = [22, 32, 70];
+
+  const mix = skyState.progress;
+  const rTop = Math.round(dayTop[0] + (nightTop[0] - dayTop[0]) * mix);
+  const gTop = Math.round(dayTop[1] + (nightTop[1] - dayTop[1]) * mix);
+  const bTop = Math.round(dayTop[2] + (nightTop[2] - dayTop[2]) * mix);
+
+  const rBot = Math.round(dayBottom[0] + (nightBottom[0] - dayBottom[0]) * mix);
+  const gBot = Math.round(dayBottom[1] + (nightBottom[1] - dayBottom[1]) * mix);
+  const bBot = Math.round(dayBottom[2] + (nightBottom[2] - dayBottom[2]) * mix);
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, skyState.height);
+  gradient.addColorStop(0, `rgb(${rTop}, ${gTop}, ${bTop})`);
+  gradient.addColorStop(1, `rgb(${rBot}, ${gBot}, ${bBot})`);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, skyState.width, skyState.height);
+
+  const sunX = skyState.width * (0.18 + 0.6 * (1 - mix));
+  const sunY = skyState.height * (0.24 + 0.42 * (1 - mix));
+  const moonX = skyState.width * (0.76 - 0.52 * mix);
+  const moonY = skyState.height * (0.22 + 0.36 * mix);
+  const sunRadius = 52;
+  const moonRadius = 36;
+
+  ctx.beginPath();
+  ctx.fillStyle = `rgba(255, 210, 94, ${0.8 + (1 - mix) * 0.2})`;
+  ctx.arc(sunX, sunY, sunRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  const glow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 140);
+  glow.addColorStop(0, 'rgba(255,255,255,0.52)');
+  glow.addColorStop(0.2, 'rgba(255,207,92,0.35)');
+  glow.addColorStop(1, 'rgba(255,207,92,0)');
+  ctx.fillStyle = glow;
+  ctx.fillRect(sunX - 150, sunY - 150, 300, 300);
+
+  const moonAlpha = Math.max(0, mix * 1.2);
+  ctx.beginPath();
+  ctx.fillStyle = `rgba(255,255,255,${moonAlpha})`;
+  ctx.arc(moonX, moonY, moonRadius, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.fillStyle = `rgba(255,255,255,${moonAlpha * 0.2})`;
+  ctx.arc(moonX + 15, moonY - 8, moonRadius * 0.82, 0, Math.PI * 2);
+  ctx.fill();
+
+  const starAlphaBase = mix * 1.2;
+  skyState.stars.forEach((star, index) => {
+    const offsetX = (skyState.pointerX || 0) * 18 * star.drift;
+    const offsetY = (skyState.pointerY || 0) * 18 * star.drift;
+    const px = star.x * skyState.width + offsetX;
+    const py = star.y * skyState.height * 0.82 + offsetY;
+    const twinkle = 0.4 + 0.6 * Math.sin((performance.now() / 700) + star.twinkle + index);
+    const alpha = Math.min(1, star.alpha * twinkle * starAlphaBase);
+
+    if (alpha <= 0.03) return;
+    ctx.beginPath();
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.arc(px, py, star.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  const meteorChance = Math.random() < (0.0025 + mix * 0.006);
+  if (meteorChance && mix > 0.6) {
+    const x = Math.random() * skyState.width * 0.7 + 30;
+    const y = Math.random() * skyState.height * 0.28 + 15;
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x - 60, y + 35);
+    ctx.stroke();
+  }
+
+  skyState.clouds.forEach((cloud, index) => {
+    const drift = ((performance.now() * 0.01 * cloud.speed) + index * 40) % (skyState.width + 250);
+    const x = ((cloud.x * skyState.width) + drift) % (skyState.width + 220) - 120;
+    const y = cloud.y * skyState.height + Math.sin((performance.now() / 1600) + index) * 10;
+    drawCloud(x, y, cloud.scale * (1 + mix * 0.1), cloud.opacity + mix * 0.2, ctx);
+  });
+
+  requestAnimationFrame(drawSky);
+}
+
+function bindSky() {
+  createStars(220);
+  createClouds();
+  resizeSky();
+  window.addEventListener('resize', resizeSky);
+  window.addEventListener('pointermove', (event) => {
+    skyState.pointerX = (event.clientX / window.innerWidth - 0.5) * 2;
+    skyState.pointerY = (event.clientY / window.innerHeight - 0.5) * 2;
+  });
+  requestAnimationFrame(drawSky);
 }
 
 function init() {
-  loadTheme();
-  initThemePanel();
-  initNav();
-  initReveal();
-  initCursor();
-  initYear();
-  initCopyDiscord();
+  initTheme();
+  bindUI();
+  bindAudio();
+  renderPlaylist();
+  updateVolumeStyles();
+  setRepeatButtonState();
+  setShuffleButtonState();
+  updatePlayButton();
+  updateVolumeIcon();
+  loadTrack(state.currentTrack);
+  bindSky();
 
-  const refreshButton = $('#refresh');
-  if (refreshButton) refreshButton.addEventListener('click', loadProfile);
-  if (refreshButton) loadProfile();
-}
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  init();
-}
-
-window.addEventListener('storage', (event) => {
-  if (event.key === THEME_STORAGE_KEY && event.newValue) {
-    try {
-      applyTheme(JSON.parse(event.newValue));
-    } catch {
-      applyTheme(themePresets.violet);
-    }
+  if (prefersReducedMotion) {
+    skyState.target = state.theme === 'night' ? 1 : 0;
+    skyState.progress = skyState.target;
   }
-});
+}
 
-window.addEventListener('load', () => {
-  document.body.classList.add('ready');
-});
+init();
